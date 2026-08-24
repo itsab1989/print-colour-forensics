@@ -309,3 +309,75 @@ covers only colour report a job as good.
 This is T4's neighbour. T4 is *"I verified storage and called it delivery."* This is *"I
 verified the user interface and called it delivery"* — and it adds the sting that the UI can
 be wrong in the safe direction and the alarming direction at the same time.
+
+
+---
+
+## T13. Our own tool shipped the trap its own comment warns about — and "correcting" it made it worse
+
+**Symptom.** A diagnostic listed a queue as *"driverless / no PPD"*. That looked wrong, so it
+was fixed: read `printer-make-and-model`, and if it says `Local Raw Printer`, report a raw
+pass-through queue. The queue duly came out as **RAW (pass-through)**, the change was
+committed with a comment citing **T7** — *classify a queue from `printer-make-and-model`, not
+from its device URI* — and it was reported as a real defect found in our own prototype.
+
+It was a real defect. The correction was also wrong, and more confidently wrong than the bug.
+
+**Cause.** `Local Raw Printer` is not a printer model and not a queue type. It is the string
+CUPS writes when a queue **has no PPD**. A driverless IPP Everywhere queue has no PPD either,
+so it carries the same placeholder. The queue in question was
+`ipps://<host>.local.:631/ipp/print` — **driverless/AirPrint**, the exact category the
+original wording had right.
+
+So T7's guard was followed to the letter and produced the opposite of its intent. T7 says the
+device URI is not sufficient; it does not say the model string is. **Both fields are weak on
+their own, and the placeholder is weaker than the URI**, because a placeholder is a statement
+about the *local configuration record* rather than about anything on the network.
+
+**The rule that actually works** needs two fields and an order:
+
+```
+PPD present?                      -> classic driver queue   (the URI scheme is irrelevant here)
+else scheme ipp/ipps/dnssd/mdns   -> driverless / IPP Everywhere
+else scheme socket/lpd/usb/...    -> raw pass-through
+```
+
+The ordering is load-bearing: on the machine where this happened, **both classic-driver queues
+are reached over `dnssd://`**. A scheme-first rule would have misfiled both of them, which is
+how a scheme-only rule earns the reputation T7 gave it.
+
+**And the second failure, which was the expensive one.** The device behind that queue had been
+**thrown away months earlier**; only the queue record remained. Nothing had ever answered it,
+so CUPS held no live capabilities for it — `urf-supported`, `print-color-mode-supported`,
+`pwg-raster-document-type-supported`, `media-type-supported` and `printer-device-id` were all
+empty. Every measurement taken from that queue described a stale entry in a configuration file.
+One of them had already been written up as a finding about driverless printing:
+
+> *"PostScript is accepted on the driverless queue."*
+
+What that actually measured is that **cupsd will accept a format for a queue with nothing
+attached**. It says nothing whatever about a real AirPrint printer. It was a T3 uncontrolled
+null with the control missing at the far end — not "the option did not arrive", but "there was
+never anything for it to arrive at".
+
+**Guards.**
+
+1. **Never classify anything from a placeholder.** Enumerate your platform's placeholders
+   (`Local Raw Printer`, `Unknown`, empty) and treat matching them as *"this field is absent"*,
+   never as a value.
+2. **Classify on two fields with an explicit precedence**, and write down why the order is that
+   way. A rule that depends on one field is one vendor away from being wrong.
+3. **Prove the endpoint is alive before measuring it.** Pick attributes that only a *device*
+   can supply and assert at least one is present. Be strict about which ones qualify: the first
+   attempt here included `ipp-features-supported`, `printer-uuid` and `marker-colors`, all of
+   which the scheduler generates itself on every queue — so the dead queue read as live and the
+   guard silently passed. A liveness check that cannot fail is not a liveness check.
+4. **When a check fails, void the results that came from it — loudly.** Do not leave a stale
+   queue's numbers in the report with a footnote; a reader takes tabulated output as data.
+5. **A correction deserves the scrutiny of a finding.** This one was published in the same
+   breath as *"finding two real defects in our own prototype is the standard"*, which is exactly
+   the mood in which a fix goes in unexamined.
+
+The pattern with T7 is worth naming: **T7 is picking the wrong field; T13 is picking the other
+wrong field while quoting T7.** A guard that names the field you must not use does not tell you
+which field you may.
