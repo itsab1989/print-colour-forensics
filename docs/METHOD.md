@@ -222,3 +222,31 @@ colour decision lives in WCS/ICM. **Linux/CUPS** shares PPD levers, `ippcapture.
 `ppdprobe.py`, `rasterdecode.py` and the scheduler sandbox, but not Apple's
 `cgpdftoraster`/`cgimagetopdf` — there the host rasteriser is typically Ghostscript or
 `pdftoraster`, and the same M2 technique applies with those binaries substituted.
+
+## Before every push: the scrub scan
+
+```sh
+python3 tools/scrub_scan.py --self-test     # prove the patterns still reject their bait
+python3 tools/scrub_scan.py .               # scan the tree
+```
+
+The scan must report **0 findings** and the name check must report **loaded**, not `NOT RUN`.
+Those are two different results and they must never be read as the same one: a scanner that
+was given no names cannot have found one.
+
+**What it looks for, and why each entry is there** — this list is a record of things that
+leaked or nearly leaked, not a guess:
+
+| pattern | why |
+|---|---|
+| device URIs containing a hardware identifier | a queue's `device-uri` names the physical device (`?uuid=…`, or a `.local.` name derived from it). It appears in ordinary `lpstat -v` output, so it arrives in a paste without anyone choosing to include it. Publish the **scheme only** |
+| bare UUIDs | printer and device identifiers |
+| email addresses | the project's `…@users.noreply.github.com` address is the only permitted one, and it is the only one exempted |
+| home directory paths | `/Users/<name>/…` names the account holder |
+| mDNS hostnames | derived from the machine or the device |
+| serial-number fields | device serials |
+| names of people, customers, accounts, private products | loaded from a list held **outside every repository** (`~/.print-colour-forensics-names`) — a scanner that carries the words it hunts for publishes them itself, which the first version of this script duly did |
+
+`--self-test` builds bait for each pattern **from string fragments** so the literals never
+appear in the file, then asserts each one is rejected and that the permitted noreply address
+is not. A guard nobody has watched reject anything is not a guard.
