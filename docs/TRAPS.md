@@ -633,3 +633,48 @@ actually left on the queue afterwards. They differed by one.
 4. **A regression guard must be shown to fail against the bug.** Keep the broken parser in
    the test as the mutation control; a guard that passes against both versions is decoration.
 
+
+---
+
+## T18. The proxy that agreed with the data on the case everyone checked
+
+**Symptom.** A driver overrides a "no colour management" request on some of its paper types
+and honours it on others. Which ones? A tidy explanation was available and was written into
+two documents and one diagnostic: *"the papers it overrides are exactly the ones the
+manufacturer ships no per-paper colour profile for."* It fit the mechanism, it fit the one
+paper everybody tested with, and nobody re-derived it for two months.
+
+**Cause.** It was a **proxy**, inferred from the mechanism, and the measurement it stood in
+for was sitting in the same repository. Checked against that sweep — every paper type, one
+setting varied, a per-run receipt proving the setting arrived:
+
+```
+measured overridden                    6   (plain paper, three postcard stocks, greeting card, card stock)
+papers with no per-paper profile      17
+no profile BUT measured honoured      10   <- baryta, canvas, washi, the fine-art stocks
+never measured at all                  4   <- neither list
+```
+
+**Ten papers.** The overriding class was a *plain/card* class, not a *no-profile* class. The
+two happen to coincide on the plain paper everyone reaches for when testing this, which is
+exactly why it survived.
+
+**How it was found, and this is the part worth keeping.** Not by review. A new feature
+computed a **count** from the proxy — *"17 of this driver's 25 paper types behave this way"* —
+and printing that number next to the measured six made the disagreement impossible to miss.
+The proxy had been invisible while it was only ever asked about one paper at a time.
+
+**Guards.**
+
+1. **A rule derived from a mechanism is a hypothesis; the sweep that measured it is the
+   answer.** If the measurement exists, read it. If the code re-derives it "because the
+   mechanism implies it", the code has replaced data with reasoning.
+2. **Carry measured sets as DATA, not as prose in a comment.** A list a reader has to
+   re-derive from an explanation is a list that will be re-derived wrongly.
+3. **Make the size of a claim visible.** A boolean per case hides a wrong rule; a *count over
+   all cases* exposes it immediately. Print the total.
+4. **Keep a third state for what was never measured.** Four papers produced no output and
+   belong to neither list; a rule with only two branches will silently assign them.
+5. **Keep the refuted proxy as the mutation control.** It is the only thing that proves the
+   corrected check would have caught the original error.
+
