@@ -523,3 +523,54 @@ host-side conditional, not a claim made to the hardware.
 **Boundary.** All of the above is the flag on the wire. The filter's raster payload is
 byte-identical either way, so what the printer *does* with the flag is not observable from the
 computer. Only a printed, measured sheet closes that step.
+
+## F16 — A cancelled driver pane strips **every** vendor option, and the scheduler substitutes the PPD defaults
+
+Measured through a real macOS print dialog with the vendor's own print-dialog extension
+loaded, against a private scheduler whose backend writes the job to a file. No paper, no ink.
+
+**The interaction:** open the driver's Quality & Media pane, change the paper, close **that
+pane** with **Cancel**, then print.
+
+**The submitted ticket:**
+
+```
+<vendor>Intent2 = <absent>    <vendor>ProfileID = <absent>    <vendor>MediaType = <absent>
+job-hold-until  = no-hold  (the attribute set before the dialog was also gone)
+```
+
+**And absent is not neutral.** `cupsd` fills every unset option from the PPD's `*Default…` at
+print time. On this PPD:
+
+| option | PPD default | effect |
+|---|---|---|
+| `*Default…Intent2` | `5` — perceptual | **colour management ON**, against an explicit request for none |
+| `*Default…ProfileID` | `1` — the generic profile | colour-managed on **every** medium (F13's rule) |
+| `*Default…MediaType` | `51` — a glossy photo stock | **the wrong paper**, i.e. the wrong ink laydown |
+
+So the failure does not degrade gracefully: it lands on the single worst combination in the
+108-cell cross measured in F13 — the one cell that colour-manages regardless of media.
+
+**The control, and it is what makes this a finding rather than an anecdote.** The same
+interaction was captured from a real application that re-writes its settings immediately
+before submitting. One variable:
+
+| | intent | media | what reaches the printer |
+|---|---|---|---|
+| application that **re-asserts** at submission | correct (`1001`) | present | **not** colour-managed |
+| test script that **does not** | `<absent>` | `<absent>` | **colour-managed, wrong paper** |
+
+**Consequence for any application that sets driver options.** Options set *before* the print
+dialog cannot be relied upon to reach the job — a single cancelled pane discards them, with
+nothing on screen to say so and no error anywhere. The only reliable pattern is:
+
+1. write the options **after** the dialog returns, not before it opens;
+2. **read the submitted job back** and verify them there (`Get-Job-Attributes`), never out of
+   the settings object you wrote into;
+3. treat the code that re-writes them as load-bearing, and pin it with a test built from an
+   **emptied** settings object — a happy-path test passes with that code deleted.
+
+**Limits.** One vendor's print-dialog extension, one OS version. Whether another vendor's PDE
+rebuilds the settings dictionary the same way on Cancel is **UNPROVEN**. The consequence does
+not depend on the answer, because verifying the submitted job covers all of them; but do not
+write that any particular vendor is safe. See `TRAPS.md` T14.

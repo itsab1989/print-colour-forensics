@@ -402,3 +402,65 @@ never anything for it to arrive at".
 The pattern with T7 is worth naming: **T7 is picking the wrong field; T13 is picking the other
 wrong field while quoting T7.** A guard that names the field you must not use does not tell you
 which field you may.
+
+
+---
+
+## T14. A setting you did not send is not a setting you did not choose
+
+**Symptom.** A test submitted a print job through a real print dialog after closing one of the
+driver's panes with **Cancel**. The job arrived without the attribute under test, which was the
+expected failure and was recorded as such. What nobody looked at was the rest of the ticket:
+
+```
+<vendor>Intent2 = <absent>    <vendor>ProfileID = <absent>    <vendor>MediaType = <absent>
+```
+
+Every vendor option had gone, not just the one being measured. The run was nearly filed as
+*"the attribute did not survive"* — a true statement that would have buried the larger one.
+
+**Why the absence is worse than a wrong value.** A scheduler does not send "nothing" for an
+unset option. **CUPS fills every unset option from the PPD's `*Default…` at print time.** So a
+stripped ticket is not a neutral ticket; it is a ticket carrying the manufacturer's factory
+defaults, which on the driver in question were:
+
+```
+*Default<vendor>Intent2:   5    perceptual rendering  -> colour management ON
+*Default<vendor>ProfileID: 1    the generic profile   -> colour-managed on EVERY medium
+*Default<vendor>MediaType: 51   a glossy photo stock  -> the wrong paper
+```
+
+Those defaults happened to be the single worst combination in a 108-cell table built earlier in
+the same investigation — the one cell measured to colour-manage regardless of media. A
+cancelled pane therefore does not degrade gracefully. It lands on the worst available outcome,
+silently, with a plausible-looking dialog behind it.
+
+**The control that turned it into a finding.** The same interaction had already been captured
+from a real application that re-writes its settings immediately before submitting. Like for
+like, one variable:
+
+| | intent | media | outcome |
+|---|---|---|---|
+| application that **re-asserts** at submission | correct | present | not colour-managed |
+| test script that **does not** | absent | absent | colour-managed, wrong paper |
+
+That pair is what identified the re-assertion as load-bearing. It had been in that
+application's source for months, re-writing values that were "already set", looking exactly
+like the kind of line a tidy-up deletes.
+
+**Guards.**
+
+1. **Read the whole ticket, not the field you are testing.** The interesting failure is often
+   in the columns you did not ask about. A diff against a known-good ticket costs nothing and
+   would have surfaced this immediately.
+2. **Never treat an absent option as neutral.** Ask what the layer below substitutes for it.
+   "Not sent" and "sent as the default" are the same thing to a printer and opposite things to
+   a reader.
+3. **A value set before a dialog is a request; only a value written after the dialog, and read
+   back off the submitted job, is a fact.** Anything a user interface can rebuild, it will
+   rebuild — and it will do so without an error.
+4. **Protect the code that looks redundant.** If a line re-writes state that is already
+   correct on the happy path, a happy-path test passes with it deleted. Pin it with a test
+   built from the *damaged* state instead — start from an emptied settings object and assert
+   the values are present at the far end. Otherwise the protection survives only as long as
+   nobody tidies up.
