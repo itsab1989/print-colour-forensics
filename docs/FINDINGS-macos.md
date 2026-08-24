@@ -516,7 +516,26 @@ with the rule fixed and committed in advance:
 
 The consequence for any application that sets that Apple key "to disable colour management":
 if it does not *also* name a per-paper profile selector, it earns the colour-managed flag on
-every medium — worse than sending nothing at all. The selector is never transmitted to the
+every medium — worse than sending nothing at all.
+
+> #### ⚠ And there are two ways to set that key, only one of which sets it
+> Added 2026-08-24, measured in four cells with a driver option landing in every cell as the
+> positive control (see `TRAPS.md` **T16**). Writing the Apple key into the print job's
+> **settings dictionary** — the same place every driver option goes, and where every driver
+> option arrives correctly — is **not** the same as setting it on the **print settings**:
+>
+> ```
+> wrote nothing                  <Apple key, underscore spelling> = <platform's own value>
+> wrote the settings dictionary  <Apple key, DOT spelling>        = <our value>
+>                                <Apple key, underscore spelling> = <platform's own value>
+> wrote the print settings       <Apple key, underscore spelling> = <our value>   (one key)
+> ```
+>
+> The dictionary write is accepted, reported no error, and stored — and the job then carries
+> **two contradictory answers to the question of whether it is colour-managed**. An
+> application that sets the key this way has not disabled colour management; it has added a
+> second opinion next to the platform's own. Set it on the print settings, and then read it
+> back **off the submitted job** rather than out of the object you wrote to. The selector is never transmitted to the
 printer (identical payload; the stream's header differs only in its clock), so it is a
 host-side conditional, not a claim made to the hardware.
 
