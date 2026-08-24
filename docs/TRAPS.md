@@ -186,3 +186,41 @@ reach the driver (it changed other recorded fields), and one media value made th
 **Guard.** Before believing any null, identify a per-run receipt for the mutation and assert
 on it. Most vendor streams echo the job settings somewhere — find that, and make it part of
 the harness rather than something you check once.
+
+
+---
+
+## T10. One at a time — a clean, deterministic, repeated single-key result that was wrong
+
+**Symptom.** A bisect over 48 job options found exactly one key that flipped a driver's
+colour flag from "honoured" to "colour-managed" on a photo paper. It survived every
+control that had killed earlier claims: deterministic 3/3 in each cell, the opposite value
+of the same key gave the opposite result, the host rasteriser's output was md5-identical
+with and without it, and the effect reproduced with the vendor filter run directly with no
+scheduler at all. By every rule in `METHOD.md` it was a finding.
+
+**It was contradicted by the user's own captured job**, which carried that key with that
+value on that same class of paper and came out honoured.
+
+**Cause.** The key is one half of a pair. Its effect depends on whether a per-paper ICC
+selector is also named in the same job. The bisect's baseline had that selector absent;
+the real job had it set. A one-at-a-time search cannot see that, and every control listed
+above is equally blind to it — they all vary one factor while the others sit at whatever
+the baseline happened to be.
+
+**How it was resolved.** By crossing: 3 media × 3 values of the colour key × 4 values of
+the profile selector × 3 values of a fourth suspect = **108 cells**, each with its
+mutation-landing receipt asserted. `CNIJClearInkMode` fell out as irrelevant; one rule
+then fitted all 108 cells with zero exceptions, explained both the bisect and the
+contradicting real job, and predicted **13 of 13** cells on media it had never seen.
+
+**Guard.** A single-factor result is a hypothesis, not a finding — no matter how many
+times it repeats. Before publishing one, cross it with every other factor that differs
+between your test and the real case that motivated the work. If you cannot afford the full
+cross, at minimum run your candidate against a **real captured job** and check it predicts
+that job's outcome. Here that one check was the difference between a correct root cause
+and a confidently wrong one.
+
+This is the mirror of T9: there, a null was uncontrolled because the lever never moved.
+Here the lever moved, repeatably, and the *conclusion drawn from it* was still wrong
+because a second lever was holding still off-screen.
