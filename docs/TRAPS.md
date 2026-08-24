@@ -224,3 +224,42 @@ and a confidently wrong one.
 This is the mirror of T9: there, a null was uncontrolled because the lever never moved.
 Here the lever moved, repeatably, and the *conclusion drawn from it* was still wrong
 because a second lever was holding still off-screen.
+
+
+---
+
+## T11. The baseline that was already at the safe value — a null that reversed a shipped recommendation
+
+**Symptom.** A vendor key was swept across all three of its states on a second printer and
+recorded as **inert**: the driver's colour receipt byte was unchanged in every cell. The
+conclusion — *"this key does nothing on this vendor, so do not send it"* — was written into
+a specification and would have been shipped.
+
+**Cause.** Every cell of that sweep also carried the vendor's own colour-off lever at its
+**correct** value. With colour management already off by the vendor lever, a key whose only
+effect is *"force colour management off"* has nothing left to change. The sweep could not
+have detected the effect no matter how many media it covered.
+
+The reversal was found by accident, from a *failed positive control*: replaying the user's
+real job ticket, the vendor lever itself turned out to be inert — a second key, injected by
+the vendor's print-dialog plug-in and absent from the PPD, disables it. Crossing the three
+factors gave one rule that fits 36 of 36 cells:
+
+```
+plug-in key present  ->  vendor colour lever IGNORED; the Apple-level key decides
+plug-in key absent   ->  vendor colour lever decides, unless the Apple-level key forces off
+```
+
+So the key called inert is the **only** thing that turns colour management off for every
+print made through the real print dialog. The published advice — *do not send it* — would
+have switched colour management **on** for exactly the jobs that matter.
+
+**Why it is not T9 or T10, quite.** T9 is a lever that never arrived; this one arrived and
+was recorded as delivered. T10 is a single-factor result that was *positive* and wrong; this
+one was *negative* and wrong. The shared root is the same and worth naming separately: **a
+one-factor sweep tells you nothing when the baseline sits where the effect cannot show.**
+
+**Guard.** Before believing that a key is inert, ask *what state would this key change, and
+is my baseline already in it?* Sweep the suspect key **against the other lever in both of
+its states**, not against a fixed known-good one. And when a positive control fails, stop
+and diagnose it — that failure is where this was found.
