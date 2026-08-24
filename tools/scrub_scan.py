@@ -164,6 +164,59 @@ def self_test() -> int:
     return 0 if ok else 1
 
 
+def git_check(root: pathlib.Path) -> int:
+    """Check the repository's HISTORY, not just its working tree.
+
+    The working tree can be spotless while a commit, a tag or a leftover backup ref still
+    carries an identity that must not be published. `git filter-branch` in particular leaves
+    the entire pre-rewrite history under `refs/original/`, so a rewrite that removed an
+    address from every commit can leave a complete copy of the old commits one
+    `git push --mirror` away from being published again.
+    """
+    import subprocess
+    PERMITTED = "users.noreply.github.com"
+
+    def git(*args) -> str:
+        try:
+            return subprocess.run(["git", "-C", str(root), *args],
+                                  capture_output=True, timeout=30).stdout.decode(
+                                      "utf-8", "replace")
+        except Exception:
+            return ""
+
+    if not (root / ".git").exists():
+        print(f"git check: NOT RUN — {root} is not a git repository")
+        return 1
+
+    problems = 0
+    refs = [l.strip() for l in git("for-each-ref", "--format=%(refname)").splitlines()
+            if l.strip()]
+    print("git check — every commit reachable from every ref")
+    for ref in refs:
+        bad = sorted({a for a in git("log", "--format=%ae%n%ce", ref).split()
+                      if a and not a.endswith(PERMITTED)})
+        kind = ("BACKUP REF (git filter-branch leftover)"
+                if ref.startswith("refs/original/") else "ref")
+        if bad:
+            problems += 1
+            print(f"  FAIL  {ref}  [{kind}]")
+            for a in bad:
+                print(f"          author/committer: {a}")
+        else:
+            print(f"  PASS  {ref}")
+
+    if problems:
+        print("\nA ref carrying a non-permitted identity is one `git push --mirror` or "
+              "`git push --all` away from publishing it again.")
+        print("For filter-branch leftovers, once you are satisfied the rewrite is correct:")
+        print("    git for-each-ref --format='%(refname)' refs/original | "
+              "xargs -n1 git update-ref -d")
+        print("    git reflog expire --expire=now --all && git gc --prune=now --aggressive")
+        print("That is a DELETION of the pre-rewrite history. It is the owner's call, not "
+              "the tool's — this check reports it and stops.")
+    return problems
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -173,12 +226,17 @@ def main() -> int:
                          "a real identifier -- an exemption is how the next leak happens.")
     ap.add_argument("--self-test", action="store_true",
                     help="prove each pattern rejects generated bait, then exit")
+    ap.add_argument("--git", action="store_true",
+                    help="also check every commit reachable from every ref, including "
+                         "filter-branch backup refs, for a non-permitted identity")
     a = ap.parse_args()
     if a.self_test:
         return self_test()
     root = pathlib.Path(a.root).resolve()
     extra, status = name_patterns()
     n = scan(root, a.allow, PATTERNS + extra)
+    if a.git:
+        n += git_check(root)
     print(f"\nname check: {status}")
     print(f"{n} finding(s) in {root}")
     if not extra:

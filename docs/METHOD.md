@@ -227,7 +227,7 @@ colour decision lives in WCS/ICM. **Linux/CUPS** shares PPD levers, `ippcapture.
 
 ```sh
 python3 tools/scrub_scan.py --self-test     # prove the patterns still reject their bait
-python3 tools/scrub_scan.py .               # scan the tree
+python3 tools/scrub_scan.py --git .         # scan the tree AND the history
 ```
 
 The scan must report **0 findings** and the name check must report **loaded**, not `NOT RUN`.
@@ -250,3 +250,11 @@ leaked or nearly leaked, not a guess:
 `--self-test` builds bait for each pattern **from string fragments** so the literals never
 appear in the file, then asserts each one is rejected and that the permitted noreply address
 is not. A guard nobody has watched reject anything is not a guard.
+
+**`--git` checks the history, not just the working tree.** A spotless tree proves nothing
+about what is already published, and one case is worth calling out: **`git filter-branch`
+leaves the entire pre-rewrite history under `refs/original/`.** A rewrite that removed an
+address from every commit can therefore leave a complete copy of the old commits sitting in
+the repository, one `git push --mirror` or `git push --all` from being published again. The
+check reports such refs and prints the deletion commands; it does **not** run them, because
+discarding history is the owner's decision and not a tool's.
