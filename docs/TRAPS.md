@@ -485,3 +485,54 @@ like the kind of line a tidy-up deletes.
    built from the *damaged* state instead — start from an emptied settings object and assert
    the values are present at the far end. Otherwise the protection survives only as long as
    nobody tidies up.
+
+
+---
+
+## T15. The key you send is not always the key you read back — and the vendor you tested first decided whether you noticed
+
+**Symptom.** A verification step read a driver option off a submitted job and reported it
+**absent**. The option had been set, the submission succeeded, and the job printed correctly.
+The verifier had been exercised against one vendor for weeks and had never once been wrong.
+
+**Cause.** The platform's print system does not always preserve the *spelling* of a vendor
+option name between the settings object and the queued job. An option sent as `VEND_Option`
+can arrive on the ticket as `VEND.Option` — underscore rewritten to a dot. Which spelling you
+get depends on the submission route: a job made through the real print dialog used one, a job
+submitted programmatically used the other, and a third key appeared on the ticket in **both**
+spellings at once.
+
+**Why it hid for so long, and this is the part worth keeping.** The first vendor's option
+names contain **no underscore at all**. There was nothing to rewrite, so every test passed,
+and the assumption *"the key I sent is the key I read"* was never once challenged. The bug was
+not in the code that was tested; it was in a code path that only a second vendor could reach.
+
+**Why it was the worst possible place for it.** The verifier's job was to catch a missing
+colour setting — and a missing colour setting is precisely the state that means *colour
+management is on*. Reading the wrong spelling made every one of that vendor's colour keys
+report as absent. **The check written to catch the fault would have reported the fault's own
+signature as normal**, on every job, while looking perfectly healthy on the vendor it was
+developed against.
+
+**How it was found.** Not by review, and not by reasoning about the code. By running the
+identical check against a **second vendor's queue** because someone asked whether the work
+generalised. It failed on the first attempt.
+
+**Guards.**
+
+1. **Normalise before comparing.** When reading any option off a submitted job, accept every
+   spelling the platform might use — it is three lines and it is vendor-neutral.
+2. **A missing key must never be read as a benign result.** Decide explicitly what absence
+   means for each option; where absence is the dangerous state (see T14), a lookup miss and a
+   genuinely absent value must be distinguishable.
+3. **Run your verifier against a second vendor before believing it generalises.** Not to test
+   the *vendor* — to test the *verifier*. A tool exercised against one example encodes that
+   example's incidental properties, and the ones it encodes are invisible precisely because
+   they never vary.
+4. **Prefer the property that cannot silently differ.** Where a check can be written against
+   something structural rather than a name, write it that way.
+
+This is the mirror of T13. There, a rule derived from one queue was wrong about a second. Here,
+*code* derived from one vendor was wrong about a second — and in both cases the first example
+was not merely unrepresentative, it was unrepresentative in a way that made the error
+impossible to see from inside it.
