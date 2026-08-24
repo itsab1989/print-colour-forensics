@@ -696,3 +696,53 @@ matches nothing can no longer report a confident empty result.
 4. **When a correction propagates into several files, check the push state before anything
    else.** Here nothing had been pushed, so it was a local revert rather than a public
    retraction — but that was luck, not process.
+
+
+---
+
+## T19. A check that ran, matched nothing, and reported the nothing as a pass
+
+**Symptom.** Three separate instruments, in three separate rounds, returned a clean result
+because they examined **nothing at all**:
+
+* a comparison of two print streams reported them **identical** — it was looking for raster
+  blocks in a container that has none, so it compared an empty list with an empty list;
+* a containment check on an install package reported every file **confined to the expected
+  directory** — it had globbed for the manifest at the wrong path, found no files, and every
+  one of zero files was inside the directory;
+* a sweep reported twelve measurement cells collected — it matched "the newest output file"
+  and accepted it the moment it was non-empty, so it read every file **mid-write**. Every size
+  came out an exact multiple of 64 KB.
+
+All three exited zero. All three printed something that read like success.
+
+**Cause.** The instrument's *domain* was empty, and every one of these checks was written as
+*"is there anything wrong in what I found?"* rather than *"did I find anything?"*. An empty
+domain satisfies a universal claim vacuously: **all zero files were confined; all zero blocks
+were identical.**
+
+**How each was caught.** Never by reading the code. By a control that had to produce a
+non-empty result:
+
+* the stream comparison had a control pair that *must* differ — it said "identical" too, and
+  that is what exposed it;
+* the containment check was caught by reading the output rather than the exit status, and
+  noticing the file count was zero;
+* the sweep was caught by its **landing receipt**: all twelve cells reported the option had not
+  been delivered, because the truncated files did not contain it.
+
+**Guards.**
+
+1. **Assert the denominator.** Before interpreting any "all clear", assert that the thing
+   examined more than nothing: `n > 0`, and ideally the *expected* n.
+2. **Every checker needs a positive control that makes it fire.** A check that cannot be made
+   to fail on demand is not a check. Keep the failing input in the test suite.
+3. **"Not yet finished" and "finished and empty" are different states.** When reading a file
+   another process is writing, wait on that process's completion, not on the file's size.
+   Sizes that are suspiciously round are a symptom of reading mid-write.
+4. **Prefer identity to recency.** Match output to the job that produced it by an id you
+   control, never by "the newest file in the directory".
+
+This is the same lesson as the completeness control — *an absence proves nothing until the
+instrument is shown able to detect a presence* — arriving from the other side: **an emptiness
+proves nothing until the instrument is shown able to find something.**
