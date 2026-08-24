@@ -536,3 +536,100 @@ This is the mirror of T13. There, a rule derived from one queue was wrong about 
 *code* derived from one vendor was wrong about a second — and in both cases the first example
 was not merely unrepresentative, it was unrepresentative in a way that made the error
 impossible to see from inside it.
+
+
+---
+
+## T16. Two ways to set the same key, and only one of them is the key
+
+**Symptom.** A tool wrote the platform's colour-matching option into the print job's settings
+dictionary — the obvious place, the same place every driver option goes, and the place where
+every driver option had been landing correctly for weeks. The job came back carrying that
+option set to **the opposite value**.
+
+The first reading was that the platform had overridden the request. It had not. Reading the
+whole ticket instead of the one key showed what had actually happened:
+
+```
+wrote nothing                 AP_ColorMatchingMode = <platform's own value>
+wrote the settings dictionary AP.ColorMatchingMode = <our value>            <- respelled
+                              AP_ColorMatchingMode = <platform's own value> <- still there
+wrote the print settings      AP_ColorMatchingMode = <our value>            <- ONE key
+wrote both                    both spellings, both our value
+```
+
+**Cause.** The platform's own options and the driver's options are not stored in the same
+place, even though one API accepts both. A value put in the **dictionary** arrives on the job
+under a **respelled** name, as an extra option — while the platform continues to emit its own
+spelling with its own value, exactly as if nothing had been written. The API accepted the
+write, reported no error, and stored it. It simply was not the same key.
+
+**Why it is dangerous rather than untidy.** The job then carries **two contradictory answers
+to the same question**, and this was the question of whether the print is colour-managed.
+Anything reading one spelling reports "off"; anything reading the other reports "on"; both
+are reading the real ticket, and both are confident. It is T15's two-spelling problem, except
+that here **the tool itself created the second spelling** while believing it had set the first.
+
+**How it was found, and this is the part worth keeping.** Not by review — by a verification
+step that compared *everything that was asked for* against *everything the job carried*, and
+refused to check only the keys the current investigation was about. The tool that had been
+exercising this path for weeks excluded that key from its pass condition, so no number of
+runs of it could ever have shown this.
+
+**Guards.**
+
+1. **After submitting, diff what you asked for against what the job carries — all of it.**
+   Not the field under test. A key that "was set" and a key that "arrived" are different
+   claims (T4), and a key that arrived *under a different name* is a third.
+2. **A write that returns no error is not a write that took effect.** Where an API offers two
+   routes to what looks like one setting, establish by measurement which one the far end
+   reads, with a control that lands in every cell.
+3. **Never exclude a key from a pass condition because it is "not what this run is about".**
+   That exclusion is what made this invisible; the excluded key was the decisive one.
+
+
+---
+
+## T17. A parser that assumed the order of the fields, and nearly deleted the evidence
+
+**Symptom.** A tool identified its own print job by writing a unique token into the job's name
+and searching the queue for it. The parser walked the scheduler's reply, started a new record
+whenever it saw a job id, and attached each following attribute to that record. It looked
+right, it read cleanly, and it returned a job id every time.
+
+**Cause.** The scheduler emits the **name before the id**:
+
+```
+job-name  = probe-ALPHA
+job-id    = 989
+job-state = pending-held
+job-name  = probe-BETA
+job-id    = 990
+```
+
+So every name was attached to the **previous** job. "The job whose name carries my token"
+returned **the job submitted just before ours** — on the machine this ran on, one of nineteen
+held jobs belonging to the user, holding evidence that could not be recreated. The next step
+in the tool was to cancel it.
+
+**Why nothing caught it.** The tool always returned *an* id, the id always existed, and the
+job it pointed at was always real. Every check that asked "did I get a job?" passed. On a
+queue where our job is the only job — which is every developer's first test — the wrong answer
+and the right answer are the same number.
+
+**How it was found.** By a control that compared the id the tool reported against the job
+actually left on the queue afterwards. They differed by one.
+
+**Guards.**
+
+1. **Never assume the order of fields inside a record.** Group by *a key repeating*, which
+   needs no assumption, rather than by *one particular key appearing*.
+2. **Test the identification with more than one record present**, and with the record you
+   want in a position other than last. One-record tests cannot distinguish an off-by-one from
+   a correct answer.
+3. **Re-verify ownership at the moment of the destructive call**, not once, earlier, on trust
+   — the same discipline as verifying at the boundary (T4). A second, independent check at
+   the point of damage catches this class of bug on its own.
+4. **A regression guard must be shown to fail against the bug.** Keep the broken parser in
+   the test as the mutation control; a guard that passes against both versions is decoration.
+
