@@ -3,7 +3,14 @@
 Every number here was produced with the methods and controls in `METHOD.md`. Anything not
 measured is marked **UNPROVEN**. Hardware: one classic-driver photo inkjet ("Printer A", a
 Canon PRO-300-class CNIJ driver), one classic-driver inkjet ("Printer B", an Epson
-ET-8550-class driver), one raw pass-through queue.
+ET-8550-class driver), and one queue with **no device behind it** — a leftover record for a
+printer that had been disposed of. That third queue was originally described as a raw
+pass-through queue and was cited as evidence in F4 and F7; **both citations are withdrawn**
+(`TRAPS.md` T13). Nothing measured from it describes a printer.
+
+The driverless/IPP-Everywhere path is instead measured against a **software IPP Everywhere
+printer** stood up locally (`ippeveprinter`, CUPS 2.4.19) — see F15, including what a
+software printer cannot tell you.
 
 ## F1 — The host rasteriser passes untagged device colour through bit-exact
 
@@ -77,8 +84,18 @@ $ lp -H hold -d <classic-driver queue> chart.ps
 exit 1 — Document format "application/postscript" not supported.
 ```
 
-Both classic-driver queues rejected it. **The raw queue accepted it** — format support is
-per-queue and should be negotiated (`document-format-supported`), not guessed and retried.
+Both classic-driver queues rejected it.
+
+> **⚠ The third queue's result is WITHDRAWN as evidence.** It was recorded as *"the raw queue
+> accepted it"*. That queue was not raw — it was **driverless** (F7, corrected) — and, worse,
+> **it had no device behind it at all**: the printer had been disposed of and only the local
+> queue record remained, so CUPS held none of its capabilities. What the test measured is that
+> **cupsd accepts a format for a queue with nothing attached**. It says nothing about a raw
+> queue, nothing about a driverless queue, and nothing about any printer. See `TRAPS.md` T13.
+
+**What still stands from F4:** format support is per-queue and must be negotiated by reading
+`document-format-supported`, never guessed and retried. That follows from the two
+classic-driver rejections on their own.
 
 ## F5 — The driver SILENTLY OVERRIDES "no colour management" for some papers
 
@@ -172,11 +189,35 @@ This is a structural, surveyable difference and a plausible reason two vendors b
 differently. It is **not** proven to be causal on this OS, where the ICC chain is ignored
 anyway (F2) — but it would matter on any OS or path where it is not.
 
-## F7 — Queue classification, and a trap
+## F7 — Queue classification, and a trap **(CORRECTED — the original was backwards)**
 
-A queue whose device URI was `ipps://…/ipp/print` reported
-`printer-make-and-model = "Local Raw Printer"` — a **raw** queue, not driverless. Classify
-from the model string and the presence of a PPD.
+> **Withdrawn 2026-08-24.** This entry read: *"A queue whose device URI was
+> `ipps://…/ipp/print` reported `printer-make-and-model = "Local Raw Printer"` — a raw queue,
+> not driverless. Classify from the model string and the presence of a PPD."* **That is
+> false.** `Local Raw Printer` is CUPS's placeholder for a queue with **no PPD**; a
+> driverless queue carries it too. The queue was driverless. Following this entry's advice
+> shipped a misclassification in our own tooling — `TRAPS.md` T13.
+
+**Corrected rule**, verified against three queues on one machine (two classic-driver, one
+driverless):
+
+```
+PPD present?                      -> classic driver queue   (URI scheme is irrelevant here)
+else scheme ipp/ipps/dnssd/mdns   -> driverless / IPP Everywhere
+else scheme socket/lpd/usb/...    -> raw pass-through
+```
+
+The order is load-bearing: **both classic-driver queues on that machine use `dnssd://`**, so
+a scheme-first rule misfiles them, and a model-string rule misfiles the driverless one.
+Placeholders (`Local Raw Printer`, `Unknown`, empty) must be treated as *absent*, never as a
+value.
+
+**And check that anything answered.** A queue can outlive its device. Assert at least one
+attribute that only a device supplies — `urf-supported`, `print-color-mode-supported`,
+`pwg-raster-document-type-supported`, `media-type-supported`, `printer-device-id`. Do **not**
+use `ipp-features-supported`, `printer-uuid`, `marker-colors` or `document-format-supported`:
+the scheduler generates those on every queue, live or dead, and a liveness check built on them
+cannot fail.
 
 ## F8 — Driverless / AirPrint has no standardised "off"
 

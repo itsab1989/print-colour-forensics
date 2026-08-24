@@ -116,13 +116,34 @@ If the answer is "not much", change the stimulus.
 
 ## T7. Assuming a queue is what its name suggests
 
-A queue whose device URI was `ipps://…/ipp/print` was assumed to be a driverless
-IPP-Everywhere queue. Its `printer-make-and-model` was **`Local Raw Printer`** — a raw
-pass-through queue, which behaves completely differently (it accepts any format verbatim,
-including PostScript that PPD queues reject).
+> ### ⚠ THIS ENTRY WAS ITSELF WRONG, AND ITS GUARD CAUSED A SECOND FAILURE — SEE T13
+> The original text is kept below, struck through in effect, because the *shape* of the
+> mistake is right and the *conclusion* was not. Following its guard produced T13.
 
-**Guard.** Classify queues from `printer-make-and-model` and the presence of a PPD, not
-from the device URI. `ladder.py` does this.
+**As originally written (WITHDRAWN):** *"A queue whose device URI was `ipps://…/ipp/print`
+was assumed to be a driverless IPP-Everywhere queue. Its `printer-make-and-model` was
+`Local Raw Printer` — a raw pass-through queue, which behaves completely differently.
+**Guard:** classify queues from `printer-make-and-model` and the presence of a PPD, not from
+the device URI."*
+
+**What was actually true.** That queue *was* driverless. `Local Raw Printer` is the string
+CUPS writes when a queue has **no PPD**, which is equally true of a driverless queue — a
+placeholder, not a model and not a queue type. The original reading was correct and the
+"correction" inverted it. The guard then told a later reader to classify on the very field
+that had caused the error, and a diagnostic shipped doing exactly that (T13).
+
+**The surviving lesson, which is real:** a queue is not what any single field suggests. The
+device URI alone is insufficient — on the machine where this happened, both **classic-driver**
+queues are reached over `dnssd://`. The model string alone is worse, because it can be a
+placeholder. **Corrected guard, and the order matters:**
+
+```
+PPD present?                      -> classic driver queue   (the URI scheme is irrelevant here)
+else scheme ipp/ipps/dnssd/mdns   -> driverless / IPP Everywhere
+else scheme socket/lpd/usb/...    -> raw pass-through
+```
+
+Never classify on a placeholder. `ladder.py` implemented the withdrawn guard and is corrected.
 
 ---
 
