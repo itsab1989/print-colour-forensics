@@ -574,3 +574,46 @@ nothing on screen to say so and no error anywhere. The only reliable pattern is:
 rebuilds the settings dictionary the same way on Cancel is **UNPROVEN**. The consequence does
 not depend on the answer, because verifying the submitted job covers all of them; but do not
 write that any particular vendor is safe. See `TRAPS.md` T14.
+
+## F17 — A driver's own default option value can be the one that defeats its own "no colour management" setting
+
+Stated separately from F16 because it is a property of the **shipped printer description**,
+independent of any application's behaviour, and it is what makes F16's failure silent.
+
+The PPD ships:
+
+```
+*Default<vendor>MediaType: 51     a glossy photo stock
+*Default<vendor>ProfileID: 1      the GENERIC profile
+```
+
+Two observations, and the second is the serious one.
+
+1. **The two defaults do not agree with each other.** Media 51 pairs with profile `3`
+   (`..._G1_<that paper>.icc`), not `1`. The PPD's resting state is internally inconsistent.
+2. **The chosen default is the single worst value in the table.** Measured over a 108-cell
+   cross (F13): with the Apple key `AP_ApplicationColorMatching` present — the state any
+   application using the platform's colour-matching convention puts a job in —
+   `ProfileID = 1` causes the driver to **colour-manage on every medium**, while any
+   per-paper value (`≥ 2`) causes it to **honour** an explicit "no colour correction".
+
+**So the driver ships with the one default that defeats its own no-colour setting**, and it
+applies to every job that does not explicitly name a profile. The vendor's own print-dialog
+extension computes a consistent pairing and never lands there. Every other route does:
+command-line submission, any application that sets the no-colour option and reasonably assumes
+that is sufficient, and any job whose options were discarded by a cancelled pane (F16).
+
+**Why this is worth recording as a general finding.** The usual mental model is that a
+default is a safe or neutral choice and that an explicitly-set option overrides it. Here the
+default is neither safe nor neutral, and the explicitly-set no-colour option does **not**
+override it — a second, undocumented option decides, and its default is the harmful one.
+
+**Guard, for anyone auditing a driver they did not write.** Do not treat `*Default…` values as
+a benign baseline. Enumerate them, and for every option your measurements show to be
+decisive, check **what the default is** and whether it sits on the safe side. A driver whose
+default lands on the harmful branch turns "the user did not configure this" into "the user
+configured it wrongly", silently, for every application.
+
+**Limits.** One vendor, one model family, one driver build. Whether other vendors' defaults
+sit on the safe side of their own decisive options is **UNPROVEN** and is exactly the kind of
+thing that must be measured per driver rather than assumed.
