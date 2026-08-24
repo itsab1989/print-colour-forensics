@@ -651,3 +651,64 @@ configured it wrongly", silently, for every application.
 **Limits.** One vendor, one model family, one driver build. Whether other vendors' defaults
 sit on the safe side of their own decisive options is **UNPROVEN** and is exactly the kind of
 thing that must be measured per driver rather than assumed.
+
+---
+
+## F18 — The precondition for opening a vendor's driver at all
+
+Anyone repeating this work meets this before they meet any question about colour, so it is
+recorded here rather than left to be rediscovered.
+
+**To measure what a printer driver does with a colour request you must run that vendor's own
+filter. The precondition for that is not "can the driver package be downloaded" — it is
+"is the driver installed on this machine, or is its filter self-contained".**
+
+Two vendors' filters were opened in this investigation. Both were opened because **the
+machine's owner owns those printers and their drivers were already installed**. Those filters
+reach sibling components and resources by absolute path, and those paths resolve for that
+reason — not because those vendors are architecturally more open than any other.
+
+A third vendor was probed from an extracted package. Every step people assume is the hard part
+worked:
+
+```
+the vendor's driver packages are still served, and expand without installing anything
+the filter binary extracts cleanly
+it is x86_64, from 2017; on an arm64 host with Rosetta 2 present, it executes
+its five framework dependencies were found across other packages of the same driver
+    family, staged in a scratch directory, and every demanded version matched
+the binary loads with no dynamic-linker errors, and runs
+under a private print scheduler with the vendor's own PPD it executes and speaks the
+    scheduler's protocol -- it is genuinely that vendor's filter running
+```
+
+It then failed for a reason that has nothing to do with colour and nothing to do with any of
+the above:
+
+```
+STATE: + cups-missing-filter-error       exit 1, no output
+```
+
+The filter **spawns a sibling by hard-coded absolute path**
+(`/Library/.../filters/pdftopdf.filter/...`). The behaviour is identical standalone and under
+the scheduler, so it is the filter's own decision and not a missing environment. The remedy is
+to place that sibling at that absolute path — that is, to install the driver.
+
+**Consequences for anyone planning this work:**
+
+* neither budget nor package availability is the limiting factor;
+* **a survey across many vendors needs either a machine where those drivers may be installed,
+  or a filter that happens to be self-contained** — and self-containment cannot be assumed of
+  any vendor;
+* what stays reachable *without* installing anything is the **host layer** — what the
+  operating system's own rasteriser does with a given PPD. That needs the PPD alone, and it
+  was measured that way for 80 models of one vendor. It answers a different question, and must
+  never be reported as though the vendor's filter had been opened.
+
+**A naming note that explains a whole class of results cheaply.** In at least one vendor's
+packages, driver families are named for the **imaging model** they use — a PostScript family
+and a raster family sitting side by side under near-identical names (`…P1` vs `…R1`). Rows
+that "could not be run" through a host rasteriser were overwhelmingly the PostScript ones,
+which never reach that rasteriser at all. Check which family a package contains before
+downloading the large one: in this case the colour raster family was **9.6 MB** against
+**166 MB** for the obvious choice.
