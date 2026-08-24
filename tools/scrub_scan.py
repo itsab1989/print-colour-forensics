@@ -20,8 +20,13 @@ import argparse, pathlib, re, sys
 
 # (name, regex, note)
 PATTERNS: list[tuple[str, str, str]] = [
+    # A REDACTED uri -- ipps://<id>.local./... , ipps://<redacted>, dnssd://<host>/... -- is
+    # the correct way to write one of these down, so it must not be flagged: a scanner that
+    # cries wolf over the fix teaches people to ignore it. The `<` in the character class
+    # already stops the match at a placeholder; this negative lookahead stops a URI whose
+    # identifier part IS the placeholder from matching on a later ".local." instead.
     ("device URI with a hardware identifier",
-     r"(?:ipps?|dnssd|mdns)://[^\s\"'<>)\]]*(?:uuid=|\.local\.)[^\s\"'<>)\]]*",
+     r"(?:ipps?|dnssd|mdns)://(?!<)[^\s\"'<>)\]]*(?:uuid=|\.local\.)[^\s\"'<>)\]]*",
      "a queue's device URI identifies the physical device; show the scheme only"),
     ("bare UUID",
      r"\buuid=[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
@@ -33,7 +38,7 @@ PATTERNS: list[tuple[str, str, str]] = [
      r"/Users/(?!you\b|<)[A-Za-z0-9._-]+/",
      "a home path names the account holder; use ~ or a placeholder"),
     ("machine hostname",
-     r"\b[A-Za-z0-9-]+\.local\.?(?::\d+)?\b",
+     r"(?<![<\w.-])[A-Za-z0-9-]+\.local\.?(?::\d+)?\b",
      "mDNS names are derived from the machine or device name"),
     ("serial number field",
      r"\b(?:serial(?:[ _-]?(?:no|number))?|SN)\s*[:=]\s*[A-Za-z0-9-]{6,}",
