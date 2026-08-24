@@ -36,7 +36,7 @@ except ImportError:
 APP_CM = "AP_ApplicationColorMatching"
 
 VARIANTS = [
-    ("A  colour only (what ChromIQ does today)",
+    ("A  colour keys only (what most applications set)",
      {"CNIJIntent2": "1001", "AP_ColorMatchingMode": APP_CM},
      ["Rendering Intent should read 'No Color Correction' and be GREYED",
       "the Media Type / paper menu should still be FULLY SELECTABLE"]),
@@ -57,8 +57,8 @@ VARIANTS = [
 
 
 def pick_queue(explicit: str | None) -> str:
-    # NOTE: NSPrinter uses the printer's DISPLAY name ("Canon PRO-300 series"),
-    # not the CUPS queue name ("Canon_PRO_300_series"). Accept either.
+    # NOTE: NSPrinter uses the printer's DISPLAY name (spaces), not the CUPS queue
+    # name (underscores). Accept either -- they differ for most queues.
     names = list(AppKit.NSPrinter.printerNames())
     if explicit:
         if explicit in names:
@@ -68,9 +68,6 @@ def pick_queue(explicit: str | None) -> str:
             if n.replace("_", " ").replace("-", " ").lower() == loose:
                 return n
         sys.exit(f"'{explicit}' is not one of: {names}")
-    canon = [n for n in names if "PRO_300" in n or "PRO-300" in n]
-    if len(canon) == 1:
-        return canon[0]
     if len(names) == 1:
         return names[0]
     print("Printers on this Mac:")

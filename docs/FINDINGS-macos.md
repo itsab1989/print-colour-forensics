@@ -290,6 +290,47 @@ jobs. For profiling that matters — media type drives ink limit and laydown.
 **Also decoded here:** `CNIJColorMatchingMode` = `1` on all 8 locked jobs and `0` on all 3
 unlocked ones, tracking application-managed vs driver-managed exactly.
 
+## F12b — Closing a driver pane with **Cancel** discards the application's locks *in the dialog*, but not *on the wire*
+
+A follow-up to F12 that names one cause of the reversion, and separates two things that are
+easily conflated: what the dialog shows, and what the job carries.
+
+**On screen** (a locking application, real print dialog, nothing submitted):
+
+| step | observed |
+|---|---|
+| dialog opens with three colour keys locked | paper preselected correctly; rendering intent **greyed**, reading *no correction*. **The paper menu remains fully selectable** — locking the per-paper profile key greys nothing the user needs |
+| change the paper, close a pane with **Cancel**, reopen it | **every lock is gone**: the controls are editable again, the paper has reverted to the PPD default, the intent reads *Perceptual* |
+
+**On the wire** (the same action with a print attached, captured from a paused queue):
+
+| job | pane closed with Cancel | submitted ticket |
+|---|---|---|
+| A | Color Matching | unchanged — identical to the uncancelled control apart from one unrelated key |
+| B | **Quality & Media**, after changing the paper | **media reverted to the PPD default**, and the per-paper profile key followed it. **The colour keys were preserved.** |
+
+**Two findings, and both are methodological as much as they are about this driver.**
+
+1. **The dialog's state and the submitted ticket can disagree in EITHER direction.** Here the
+   dialog showed *unlocked, Perceptual* while the job carried *locked, no correction* — the
+   mirror image of the more familiar failure where a greyed control lies in the safe
+   direction. Neither is evidence about the other. See `TRAPS.md` T12.
+2. **What made the colour keys survive is that the application wrote them again at
+   submission time.** A lock applied in the dialog is not durable; a re-assertion at
+   submission is. Any application relying on dialog locks alone is relying on the user not
+   pressing Cancel.
+
+**The consequence that generalises past colour.** Job B carries a correct colour flag and the
+wrong paper. It passes every colour check available and is still an invalid characterisation
+print, because media drives ink laydown. **Verifying only the colour keys is insufficient:
+media and quality must be verified on the submitted job as well** — and unlike every
+vendor-gate finding in this document, that check needs no vendor knowledge at all.
+
+**Not established here:** whether quality reverts by this route (in job B the user had left
+quality at its default, so its quality keys are what he chose, not a substitution — the
+quality reversion evidence is F12's jobs 5 → 6). Which *other* panes behave like Quality &
+Media is untested; only two were tried, and they differed.
+
 ## F13 — The vendor filter silently OVERRIDES "no colour correction" on plain-paper media
 
 Requesting the driver's *no colour correction* value for **all 25 media types** the PPD

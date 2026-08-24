@@ -263,3 +263,49 @@ one-factor sweep tells you nothing when the baseline sits where the effect canno
 is my baseline already in it?* Sweep the suspect key **against the other lever in both of
 its states**, not against a fixed known-good one. And when a positive control fails, stop
 and diagnose it — that failure is where this was found.
+
+
+---
+
+## T12. The screen and the wire disagreed — and the *safe-looking* direction was the wrong one to trust
+
+**Symptom.** An application locks three vendor keys in the print dialog. The user changes the
+paper, closes a driver pane with **Cancel**, and reopens it: every lock is gone. The controls
+are editable, the paper has fallen back to the PPD default, and the rendering intent reads
+*Perceptual* — colour management on, against an explicit request for none.
+
+The obvious conclusion, and it was written down before it was tested: *one cancelled pane
+silently colour-manages the print.* It explains a long-standing complaint, it matches a report
+the user had filed with the vendor years earlier, and it is wrong.
+
+**What the wire said.** The same action with a print attached, captured from a paused queue:
+the submitted ticket carried the locked colour keys **intact**. The application re-asserts its
+keys at submission time, after the dialog has been torn down. The dialog had been showing a
+state that was never submitted.
+
+**And the same job proved the inverse.** That ticket carried the **wrong paper** — reverted to
+the PPD default, with the per-paper profile key following it — while the dialog, if reopened,
+would have shown exactly that. So in one job:
+
+| | dialog | submitted ticket |
+|---|---|---|
+| colour keys | unlocked, *Perceptual* | **locked, no correction** |
+| paper | reverted to default | **reverted to default** |
+
+The dialog was wrong about colour and right about paper, in the same job, at the same moment.
+
+**Why it is dangerous.** The instinct is to trust whichever source shows the *worse* state, on
+the grounds that it is the conservative reading. That instinct produced a false root cause
+here. It would equally have missed the paper revert had the dialog happened to look fine — and
+the paper revert is the one that actually ruins the print: the job passes every colour check
+available and is still invalid, because media drives ink laydown.
+
+**Guard.** **The screen is not the record, and neither is the settings object.** Only the
+submitted job is. Read it back at the boundary (`Get-Job-Attributes` on your own job) and
+check **every** field you care about — not just the one the current investigation is about.
+Do not reason from a dialog to a ticket in either direction, and do not let a check that
+covers only colour report a job as good.
+
+This is T4's neighbour. T4 is *"I verified storage and called it delivery."* This is *"I
+verified the user interface and called it delivery"* — and it adds the sting that the UI can
+be wrong in the safe direction and the alarming direction at the same time.
