@@ -1,0 +1,33 @@
+*PPD-Adobe: "4.3"
+*% SYNTHETIC FIXTURE - hand-written for testing ppdprobe.py.
+*% Not derived from any vendor PPD. Models a driver that DOES provide an
+*% identity escape on its ICC qualifier (a "None" value resolving to a
+*% working-space profile rather than a paper profile).
+*FormatVersion: "4.3"
+*ModelName: "Example Inkjet With Escape"
+*NickName: "Example Inkjet With Escape"
+*ColorDevice: True
+*cupsFilter: "application/vnd.cups-raster 0 /path/to/vendor/filter"
+
+*OpenUI *XXColorMatch/Color Matching: PickOne
+*DefaultXXColorMatch: 3
+*XXColorMatch 1/Vendor Color Controls: ""
+*XXColorMatch 2/ColorSync: ""
+*XXColorMatch 3/Off (No Color Adjustment): ""
+*CloseUI: *XXColorMatch
+
+*cupsICCQualifier3: XXProfileSpec
+*OpenUI *XXProfileSpec/Vendor Profile: PickOne
+*DefaultXXProfileSpec: 0
+*XXProfileSpec 0/None: ""
+*XXProfileSpec 1/Example Glossy: ""
+*XXProfileSpec 2/Example Matte: ""
+*CloseUI: *XXProfileSpec
+
+*cupsICCProfile ..0/sRGB Profile: "/System/Library/ColorSync/Profiles/sRGB Profile.icc"
+*cupsICCProfile ..1/Example Glossy: "/path/to/vendor/ExampleGlossy.icc"
+*cupsICCProfile ..2/Example Matte: "/path/to/vendor/ExampleMatte.icc"
+
+*APSupportsCustomColorMatching: True
+*APCustomColorMatchingProfile sRGB/sRGB: "sRGB"
+*APCustomColorMatchingProfile AdobeRGB/AdobeRGB: "AdobeRGB"

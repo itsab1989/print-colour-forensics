@@ -1,0 +1,37 @@
+*PPD-Adobe: "4.3"
+*% SYNTHETIC FIXTURE - hand-written for testing ppdprobe.py.
+*% Not derived from any vendor PPD. Models a driver that provides NO identity
+*% escape: every ICC entry is a paper profile, the default is a real profile,
+*% and no APCustomColorMatchingProfile choices are declared - only a forced
+*% sRGB default.
+*FormatVersion: "4.3"
+*ModelName: "Example Inkjet No Escape"
+*NickName: "Example Inkjet No Escape"
+*ColorDevice: True
+*cupsFilter: "application/vnd.cups-raster 0 /path/to/vendor/filter"
+
+*OpenUI *YYIntent/Rendering Intent: PickOne
+*DefaultYYIntent: 5
+*YYIntent 5/Perceptual (Photo): ""
+*YYIntent 1001/No Color Correction: ""
+*CloseUI: *YYIntent
+
+*OpenUI *ColorModel/Color Model: PickOne
+*DefaultColorModel: RGB16
+*ColorModel RGB16/RGB 16-bit: "<</cupsColorSpace 1/cupsBitsPerColor 16>>setpagedevice"
+*CloseUI: *ColorModel
+
+*cupsICCQualifier2: YYProfileID
+*OpenUI *YYProfileID/ProfileID: PickOne
+*DefaultYYProfileID: 1
+*YYProfileID 1/Example_Generic.icc: ""
+*YYProfileID 2/Example_Glossy.icc: ""
+*YYProfileID 3/Example_Matte.icc: ""
+*CloseUI: *YYProfileID
+
+*cupsICCProfile RGB16.1./Example_Generic.icc: "/path/to/vendor/Example_Generic.icc"
+*cupsICCProfile RGB16.2./Example_Glossy.icc: "/path/to/vendor/Example_Glossy.icc"
+*cupsICCProfile RGB16.3./Example_Matte.icc: "/path/to/vendor/Example_Matte.icc"
+
+*APSupportsCustomColorMatching: True
+*APDefaultCustomColorMatchingProfile: sRGB
