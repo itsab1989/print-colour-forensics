@@ -236,8 +236,61 @@ From the IANA IPP registry:
 **For a driverless printer you cannot guarantee colour passthrough from attributes alone.**
 Check `pwg-raster-document-type-supported` for a `deviceN` type; if absent, measure.
 
-**Caveat:** no true IPP-Everywhere device was reachable during these tests, so F8 rests on
-the specification and on scheduler-synthesised attributes, not on a live AirPrint printer.
+**Caveat, now narrowed — see F15:** this originally rested on the specification plus
+attributes synthesised by a scheduler for a queue with no device. It is now measured against
+a conformant IPP Everywhere printer, with a positive control. What is still missing is
+**hardware**.
+
+## F15 — What a conformant driverless printer actually advertises, measured
+
+Measured against a real IPP Everywhere / AirPrint printer served locally by `ippeveprinter`
+(CUPS 2.4.19). No paper, no ink, no hardware: the "printer" is a program with real IPP
+attributes and a real job pipeline. This replaces every earlier number taken from a queue that
+had no device behind it (F4, F7, `TRAPS.md` T13).
+
+**A conformant COLOUR driverless printer, default attribute set:**
+
+| attribute | value | consequence |
+|---|---|---|
+| `print-color-mode-supported` | `auto, color, monochrome` | chooses colour **versus** monochrome. Nothing chooses whether a transform runs |
+| `print-rendering-intent-supported` | `auto` | PWG 5100.13 defines exactly six values — absolute, auto, perceptual, relative, relative-bpc, saturation — and **every one is a managed intent**. There is no `none` and no `off` |
+| `pwg-raster-document-type-supported` | `black_1, sgray_8, srgb_8, srgb_16` | **every value is an ICC-defined space.** No raw device colour offered |
+| `urf-supported` | `CP1, IS1-…, MT1-…, RS600, SRGB24, V1.4, W8` | Apple's raster format is an sRGB space by definition |
+| `printer-icc-profiles` | absent | when present it names the profiles the printer *will* use; it is not an escape from using one |
+| `color-supported` | `true` | says the device can print colour, nothing about management |
+
+**The positive control (TRAPS T3):** a second printer configured to advertise
+`device3_8, device3_16` — the raw device types PWG 5102.4 defines as `deviceN_8`/`deviceN_16`
+for N = 1..15, which CUPS parses over exactly that range
+(`cups/raster-stream.c:307-312`). **The probe detects them.** So "a conformant colour
+driverless printer offers no raw device colour" is a measured absence: the same check returns
+FAIL on the first printer and PASS on the second.
+
+**Controls on the job path (TRAPS T2, T9):**
+
+* the submitted PDF arrives at the print command **byte-identical** (same md5) — the harness
+  can see the document;
+* every attribute sent appears in the printer's own environment receipt — **10/10 landed**
+  across `print-color-mode` × `print-rendering-intent`;
+* the capture script reads the document from `argv[1]`, not stdin. Reading stdin yields 0
+  bytes, which would have been recorded as *"the document arrived empty"*.
+
+**What this CANNOT establish — stated before it is used:**
+
+1. **A software printer has no firmware, no ink and no colour engine.** Everything here is
+   about what the *attribute model* offers and what a *job carries*. A real printer's firmware
+   may differ in every respect that matters.
+2. **`ippeveprinter` does not validate attribute values.** It accepts
+   `print-rendering-intent=none`, a value it does not advertise, with `successful-ok` — and it
+   keeps accepting it under `ipp-attribute-fidelity=true`, where RFC 8011 §15 requires the job
+   to be rejected and the attribute reported as unsupported. **That is this implementation's
+   laxity, not IPP's behaviour and not a real printer's.** No conclusion above rests on it, and
+   in particular *"driverless printers accept an unmanaged intent"* is **not** a finding.
+
+**Net position, unchanged in substance and now earned:** IPP has no attribute meaning *"do not
+colour-manage"*. The only standardised route to unmanaged values is a `deviceN` raster type
+that the printer must advertise. Check for it, use it when present, report UNPROVEN when not,
+and reach for a measured sheet in every other case.
 
 
 ## F9 — A print job can carry another manufacturer's settings
