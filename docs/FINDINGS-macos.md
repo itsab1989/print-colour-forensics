@@ -539,8 +539,12 @@ pane** with **Cancel**, then print.
 job-hold-until  = no-hold  (the attribute set before the dialog was also gone)
 ```
 
-**And absent is not neutral.** `cupsd` fills every unset option from the PPD's `*Default…` at
-print time. On this PPD:
+**And absent is not neutral.** An option the ticket does not carry takes the PPD's `*Default…`
+value. Note the layer: the option string handed to the driver shows these keys **absent**
+rather than expanded, so it is the **driver** applying its own defaults, not the scheduler
+substituting them into the ticket. Proven for the media by identity — the vendor stream from a
+stripped ticket is byte-identical to one naming media `51` explicitly, and differs from one
+naming `42`, which is the control showing the field moves at all. On this PPD:
 
 | option | PPD default | effect |
 |---|---|---|
@@ -548,8 +552,18 @@ print time. On this PPD:
 | `*Default…ProfileID` | `1` — the generic profile | colour-managed on **every** medium (F13's rule) |
 | `*Default…MediaType` | `51` — a glossy photo stock | **the wrong paper**, i.e. the wrong ink laydown |
 
-So the failure does not degrade gracefully: it lands on the single worst combination in the
-108-cell cross measured in F13 — the one cell that colour-manages regardless of media.
+**The failure does not degrade gracefully, and it arrives by either of two routes** depending
+on the platform colour-matching key. Seven cells, each with a discriminating control that
+restores the suspected lever alone:
+
+| stripped ticket carries | emitted | restore intent alone | restore profile alone | route |
+|---|---|---|---|---|
+| `AP_ApplicationColorMatching` | colour-managed | still colour-managed | **honoured** | the **profile** defaults to the generic value (F13, F17) |
+| `AP_VendorColorMatching` | colour-managed | **honoured** | — | the **intent** defaults to perceptual |
+| no such key | colour-managed | **honoured** | — | the **intent** defaults to perceptual |
+
+**There is no state in which a stripped ticket comes out honoured.** That disjunction is the
+finding — not one unlucky combination, but the absence of a survivable one.
 
 **The control, and it is what makes this a finding rather than an anecdote.** The same
 interaction was captured from a real application that re-writes its settings immediately

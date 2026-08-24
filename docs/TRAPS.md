@@ -430,10 +430,31 @@ defaults, which on the driver in question were:
 *Default<vendor>MediaType: 51   a glossy photo stock  -> the wrong paper
 ```
 
-Those defaults happened to be the single worst combination in a 108-cell table built earlier in
-the same investigation — the one cell measured to colour-manage regardless of media. A
-cancelled pane therefore does not degrade gracefully. It lands on the worst available outcome,
-silently, with a plausible-looking dialog behind it.
+A cancelled pane therefore does not degrade gracefully — and the reason took a second pass to
+state correctly, which is itself part of this trap.
+
+**The first write-up gave a single mechanism:** the profile option defaults to the one value
+that colour-manages on every medium. That is true only when the platform's colour-matching key
+is present as its *application* value — and the ticket the claim was drawn from carried the
+*vendor* value, because the test script never set the application one. The conclusion was
+right; the stated route was not the route that ticket took.
+
+**Measured properly, it is a disjunction — and that is stronger than the single cell was.**
+Seven cells, each with a discriminating control that restores the suspected lever on its own:
+
+| stripped ticket carries | emitted | restore the intent alone | restore the profile alone |
+|---|---|---|---|
+| colour-matching = **application** | colour-managed | still colour-managed | **honoured** |
+| colour-matching = **vendor** | colour-managed | **honoured** | — |
+| colour-matching **absent** | colour-managed | **honoured** | — |
+
+Two different levers, two different routes, **and no state in which a stripped ticket comes
+out honoured.** The danger is not one unlucky cell; it is that no survivable cell exists.
+
+**And the layer was wrong too.** "The scheduler fills unset options from the PPD default" is
+not what the receipt shows: the option string handed to the driver has those keys **absent**,
+not expanded. It is the **driver** applying its own defaults, one layer further down. Same
+outcome, different mechanism — and "same outcome" is exactly why nobody would have checked.
 
 **The control that turned it into a finding.** The same interaction had already been captured
 from a real application that re-writes its settings immediately before submitting. Like for
