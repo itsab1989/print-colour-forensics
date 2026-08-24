@@ -514,17 +514,6 @@ with the rule fixed and committed in advance:
 > If `AP_ApplicationColorMatching` is set, only the per-paper profile selector decides.
 > Otherwise only the media decides.
 
-> #### ⚠ Which media, exactly — and the tidy answer is wrong
-> Corrected 2026-08-24 (`TRAPS.md` **T18**). It is tempting to say the overriding media are
-> *"the ones the manufacturer ships no per-paper profile for"* — the mechanism suggests it and
-> it is right about plain paper, which is what everyone tests with. **The sweep refutes it:**
-> of the 25 declared paper types, **6** were measured to override (plain paper, three postcard
-> stocks, a greeting card and a card stock), **17** have no per-paper profile, and **10** of
-> those 17 were measured **honoured** — baryta, canvas, washi and the fine-art stocks. Four
-> more produced no output and are **unmeasured**, belonging to neither list. The overriding
-> class is a **plain/card class**, not a **no-profile class**. Any tool deciding this must read
-> the measured list, keep a third state for the unmeasured papers, and never re-derive it from
-> the mechanism.
 
 The consequence for any application that sets that Apple key "to disable colour management":
 if it does not *also* name a per-paper profile selector, it earns the colour-managed flag on

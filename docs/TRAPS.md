@@ -636,45 +636,63 @@ actually left on the queue afterwards. They differed by one.
 
 ---
 
-## T18. The proxy that agreed with the data on the case everyone checked
+## T18. WITHDRAWN — the trap that was itself a false finding
 
-**Symptom.** A driver overrides a "no colour management" request on some of its paper types
-and honours it on others. Which ones? A tidy explanation was available and was written into
-two documents and one diagnostic: *"the papers it overrides are exactly the ones the
-manufacturer ships no per-paper colour profile for."* It fit the mechanism, it fit the one
-paper everybody tested with, and nobody re-derived it for two months.
+> ### ⚠ THIS ENTRY WAS WRONG. It is kept, and kept first, because it is the only entry here
+> ### that was published as a finding and then refuted, and that is worth more than the
+> ### finding would have been.
 
-**Cause.** It was a **proxy**, inferred from the mechanism, and the measurement it stood in
-for was sitting in the same repository. Checked against that sweep — every paper type, one
-setting varied, a per-run receipt proving the setting arrived:
+**What it claimed.** That a documented rule — *"the paper types this driver overrides are the
+ones the manufacturer ships no per-paper colour profile for"* — had been refuted by the
+project's own measurements, on ten paper types. It named them. It was written into a tool, two
+internal documents and this file, and a correction was drafted for a public issue.
+
+**What was actually true.** The rule was right. The refutation was an artefact of the code
+that read the driver description file. The manufacturer suffixes many of its colour-profile
+filenames with a variant marker that the paper's own name does not carry:
 
 ```
-measured overridden                    6   (plain paper, three postcard stocks, greeting card, card stock)
-papers with no per-paper profile      17
-no profile BUT measured honoured      10   <- baryta, canvas, washi, the fine-art stocks
-never measured at all                  4   <- neither list
+profile filename fragment   BarytaPhotoPaper-P   ->  normalised: barytaphotopaperp
+paper name                  Baryta Photo Paper   ->  normalised: barytaphotopaper
+                                                                  ^ no match
 ```
 
-**Ten papers.** The overriding class was a *plain/card* class, not a *no-profile* class. The
-two happen to coincide on the plain paper everyone reaches for when testing this, which is
-exactly why it survived.
+Nine of twenty-five papers failed to match that way and were reported as having no profile.
+Corrected, the counts are **17 papers with a profile and 8 without** — and the 8, minus two
+documented exceptions, are exactly the 6 the rule names. The original claim was **precisely
+right, including its two exceptions.**
 
-**How it was found, and this is the part worth keeping.** Not by review. A new feature
-computed a **count** from the proxy — *"17 of this driver's 25 paper types behave this way"* —
-and printing that number next to the measured six made the disagreement impossible to miss.
-The proxy had been invisible while it was only ever asked about one paper at a time.
+**How the false finding was produced, and this is the part to keep.** A new feature computed a
+**count** from the mapping — *"17 of 25 paper types"* — and printed it next to a measured six.
+The disagreement was real and worth chasing. The error was in what happened next: the count
+was treated as evidence against the standing claim, and the claim was overturned, without
+re-deriving the count from the source file the mapping came from. Ten minutes of printing all
+twenty-five rows and reading them would have shown the suffix immediately.
+
+**A number that contradicts a standing claim is a reason to check BOTH, not to overturn one.**
+The new number is exactly as likely to be wrong as the old one — more so, if it comes from
+code written that afternoon and the claim has been stable for weeks. Rank them by how much
+each has been checked, not by which is newer.
+
+This is the mirror of T14. There, a claim was **true for the wrong reason** and the reason had
+to be corrected. Here, a claim was **declared false on a wrong number** and the claim had to be
+restored. Both were caught only by going back to the raw source and reading it.
+
+**The one real defect underneath it**, which the false finding hid: the matcher failed
+**silently**. Every paper it could not match simply became *"this paper has no profile"* — a
+plausible answer, so nothing looked wrong, and that answer drives a substitution and an
+explanation shown to a user. That has been fixed by registering both spellings, and — the part
+that generalises — by adding a coverage check the caller can assert on, so a matcher that
+matches nothing can no longer report a confident empty result.
 
 **Guards.**
 
-1. **A rule derived from a mechanism is a hypothesis; the sweep that measured it is the
-   answer.** If the measurement exists, read it. If the code re-derives it "because the
-   mechanism implies it", the code has replaced data with reasoning.
-2. **Carry measured sets as DATA, not as prose in a comment.** A list a reader has to
-   re-derive from an explanation is a list that will be re-derived wrongly.
-3. **Make the size of a claim visible.** A boolean per case hides a wrong rule; a *count over
-   all cases* exposes it immediately. Print the total.
-4. **Keep a third state for what was never measured.** Four papers produced no output and
-   belong to neither list; a rule with only two branches will silently assign them.
-5. **Keep the refuted proxy as the mutation control.** It is the only thing that proves the
-   corrected check would have caught the original error.
-
+1. **Before overturning a checked claim, re-derive the new number from the raw source**, by
+   hand, and print every row. Not a summary count — the rows.
+2. **Rank evidence by how much it has been checked, not by how recent it is.** A number
+   produced by new code is the least-checked thing in the comparison.
+3. **A matcher must be able to say it could not match.** Expose the coverage; assert on it.
+   A silent false negative that lands on a plausible value is invisible by construction.
+4. **When a correction propagates into several files, check the push state before anything
+   else.** Here nothing had been pushed, so it was a local revert rather than a public
+   retraction — but that was luck, not process.
