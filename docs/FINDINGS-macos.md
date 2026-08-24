@@ -738,3 +738,57 @@ that "could not be run" through a host rasteriser were overwhelmingly the PostSc
 which never reach that rasteriser at all. Check which family a package contains before
 downloading the large one: in this case the colour raster family was **9.6 MB** against
 **166 MB** for the obvious choice.
+
+---
+
+## F19 — How many devices were actually measured, and the selection error that inflated it
+
+**Corrected 2026-08-25, after the machine's owner asked the right question:** if the unit of
+proof is the *model* rather than the vendor, is the work on the first two vendors even
+finished? It is not, and the reason is a selection error worth publishing on its own.
+
+### The disqualifier that settles it
+
+Two models are **one device measured twice** — whatever their names, and whatever their
+description files say — if they emit **byte-identical output**, or output differing only by a
+model identifier. That test is cheap and it is the last word. It was not being run.
+
+### What it showed, applied to every round
+
+```
+vendor    models named   genuinely distinct   verdicts found
+   A            1                 1                  1
+   B            4                 1                  1     <- payloads differ by ONE byte,
+   C            3                 1                  1        at one offset: a model id
+   D            3                 3                  3     <- 75,365 of 75,366 identical
+```
+
+* **Vendor B's four** — two of them regional badges of the other two — differ by a single byte
+  at a single offset. One device, four names.
+* **Vendor C's three** — same driver family, same generation, same product line — are
+  **byte-identical**. One device, three names.
+* **Vendor D's three** — different renderer families in the vendor's own data, different output
+  languages, different generations — are genuinely three devices.
+
+### The pattern, which is the finding
+
+**Every set that was chosen for convenience "agreed". The one set chosen to be genuinely
+different disagreed — completely: the colour request was carried on one model, silently
+discarded on the second, and undecodable on the third.**
+
+So *"the models of a driver family behave alike"* is at present supported by **no evidence at
+all**: every apparent instance of it was one device measured repeatedly, and the only genuine
+test of it failed. **Six genuinely distinct devices** have been measured across four vendors —
+1, 1, 1 and 3.
+
+### Guards for anyone doing this work
+
+1. **Publish the difference criterion before selecting the models**, not after seeing the
+   result. Renderer/engine name from the vendor's own data is the strongest signal; a different
+   filter binary, technology or product line next; differing declared option sets last.
+2. **Run the byte-identity check before writing the verdict.** It costs one comparison and it
+   is the only test that cannot be argued with.
+3. **Report genuinely distinct devices, never model names.** A vendor with four badges on one
+   chassis is a sample of one.
+4. **Treat "they agree" as the extraordinary claim.** On the only honest test so far, a single
+   driver family disagreed with itself three ways.
