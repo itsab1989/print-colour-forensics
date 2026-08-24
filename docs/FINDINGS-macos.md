@@ -689,10 +689,27 @@ the above:
 STATE: + cups-missing-filter-error       exit 1, no output
 ```
 
-The filter **spawns a sibling by hard-coded absolute path**
-(`/Library/.../filters/pdftopdf.filter/...`). The behaviour is identical standalone and under
-the scheduler, so it is the filter's own decision and not a missing environment. The remedy is
-to place that sibling at that absolute path — that is, to install the driver.
+> ⚠ **CORRECTED.** This paragraph first said the filter *"spawns a sibling by hard-coded
+> absolute path"*, naming a helper filter found with `strings`. **That was an inference from a
+> string in the binary, not an observation of a call, and it is wrong.** Interposing the whole
+> spawn/exec family plus the file-opening family and logging every path — before redirecting
+> anything — showed that helper is **never requested**. The corrected mechanism is below. The
+> lesson is kept in `TRAPS.md`: a plausible string is not a call.
+
+**Measured, by logging every path the filter requests:** it reads its own bundle, the PPD and
+its whole XML data tree from the extracted directory quite happily, and then does this:
+
+```
+lstat  /Library
+lstat  /Library/Printers
+lstat  /Library/Printers/hp
+stat   /Library/Printers/hp/cups/<driver>.driver     <- ENOENT: not installed
+```
+
+**The filter checks for its own canonical installed location.** Not a sibling — itself. The
+behaviour is identical standalone and under the scheduler, so it is the filter's own decision
+and not a missing environment. The remedy is the same and the conclusion is unchanged, but it
+now rests on an observed call rather than a guessed one: the driver has to be installed.
 
 **Consequences for anyone planning this work:**
 
