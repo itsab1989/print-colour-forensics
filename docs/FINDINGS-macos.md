@@ -336,3 +336,55 @@ for this whole class of device.
 
 *Not tested for the other vendor:* whether it has an equivalent media-dependent override. Its
 media option could not be shown to have landed, so that null is not reportable.
+
+
+---
+
+## F8 — A vendor's raster filter overrides "no colour correction" for certain media, for EVERY application
+
+**Vendor:** Printer A (a current consumer photo inkjet), macOS 15.7.9, vendor CUPS driver.
+
+Requesting the driver's own "no colour correction" value and reading the flag the filter
+forwards to the printer, across all 25 media types the PPD declares:
+
+| outcome | n | media |
+|---|---|---|
+| honoured | 15 | every photo, fine-art, canvas and disc medium |
+| **silently overridden to the photo intent** | **6** | the plain / postcard / greeting-card / card-stock group |
+| filter emits nothing and polls indefinitely | 4 | four matte and fine-art media |
+
+Deterministic, **one-way** (asking for the photo intent yields the photo intent on every
+medium — the driver only ever moves *towards* colour management), and the PPD declares **no
+`UIConstraints`** announcing any of it.
+
+**Every medium with a per-paper ICC profile in the PPD honoured the request: 13 of 13
+measured, 0 overridden.** Of the 8 with no per-paper profile, 6 override; the two exceptions
+are printable-disc types, which are not paper.
+
+### It is not application-specific, and that is the important part
+The same override fires for a job captured from **the operating system's own bundled PDF
+viewer** — a ticket containing none of the profiling application's keys. To use a custom ICC
+profile correctly the *application* manages colour and the driver must be set to "no colour
+correction"; this is the identical request. So on those six media, **every colour-managed
+print from every application is asking the driver to colour-manage it on top of the
+application's own conversion.** Double colour management, invisible in the UI.
+
+### A second, application-side trigger for the same flag
+The same filter also keys on Apple's `AP_ColorMatchingMode`. With
+`AP_ApplicationColorMatching` present, the honoured/overridden decision stops depending on
+media and depends **only** on whether a per-paper profile selector is also named. One rule
+covers a 108-cell cross with no exceptions, and predicted **12 of 12** real captured tickets
+with the rule fixed and committed in advance:
+
+> If `AP_ApplicationColorMatching` is set, only the per-paper profile selector decides.
+> Otherwise only the media decides.
+
+The consequence for any application that sets that Apple key "to disable colour management":
+if it does not *also* name a per-paper profile selector, it earns the colour-managed flag on
+every medium — worse than sending nothing at all. The selector is never transmitted to the
+printer (identical payload; the stream's header differs only in its clock), so it is a
+host-side conditional, not a claim made to the hardware.
+
+**Boundary.** All of the above is the flag on the wire. The filter's raster payload is
+byte-identical either way, so what the printer *does* with the flag is not observable from the
+computer. Only a printed, measured sheet closes that step.
