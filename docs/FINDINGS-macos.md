@@ -689,27 +689,36 @@ the above:
 STATE: + cups-missing-filter-error       exit 1, no output
 ```
 
-> ⚠ **CORRECTED.** This paragraph first said the filter *"spawns a sibling by hard-coded
-> absolute path"*, naming a helper filter found with `strings`. **That was an inference from a
-> string in the binary, not an observation of a call, and it is wrong.** Interposing the whole
-> spawn/exec family plus the file-opening family and logging every path — before redirecting
-> anything — showed that helper is **never requested**. The corrected mechanism is below. The
-> lesson is kept in `TRAPS.md`: a plausible string is not a call.
+> ⚠ **CORRECTED TWICE, AND THE MECHANISM IS STILL NOT ESTABLISHED.** This paragraph first
+> said the filter *"spawns a sibling by hard-coded absolute path"*, naming a helper found with
+> `strings`. **That was an inference from a string, not an observation of a call.** Interposing
+> the spawn/exec and file-opening families and logging every path — before redirecting anything
+> — showed that helper is **never requested** in the log. A second version then named the
+> filter's check for its own installed location as the cause. **That is not established
+> either**: redirecting those checks to the extracted tree made them succeed, and the filter
+> failed at exactly the same point, with the same message, as it had with no redirect at all.
+>
+> **And the instrument is not proven complete**, which is the part that matters most. The
+> binary's imported symbols include `lstat$INODE64` and `NSTask`, while the interposer targets
+> plain `lstat` and the C-level spawn family. **So "the log does not contain path X" does not
+> establish "path X is never requested."** Both stated mechanisms are withdrawn; only the
+> observations below are claimed.
 
-**Measured, by logging every path the filter requests:** it reads its own bundle, the PPD and
-its whole XML data tree from the extracted directory quite happily, and then does this:
+**What IS observed, and is enough for the practical conclusion:**
 
 ```
-lstat  /Library
-lstat  /Library/Printers
-lstat  /Library/Printers/hp
-stat   /Library/Printers/hp/cups/<driver>.driver     <- ENOENT: not installed
+the filter reads its own bundle, the PPD and its whole XML data tree from an extracted
+    directory successfully -- none of that requires installation
+it then emits, and stops:      STATE: + cups-missing-filter-error      exit 1, no output
+identical standalone and under a real scheduler  -> its own decision, not a missing environment
+redirecting every /Library/Printers/<vendor>/... path it checks, with a receipt proving each
+    redirect fired, did NOT advance it past that point
 ```
 
-**The filter checks for its own canonical installed location.** Not a sibling — itself. The
-behaviour is identical standalone and under the scheduler, so it is the filter's own decision
-and not a missing environment. The remedy is the same and the conclusion is unchanged, but it
-now rests on an observed call rather than a guessed one: the driver has to be installed.
+**The practical conclusion is unchanged and does not depend on knowing the mechanism: the
+filter will not do useful work from an extracted package, and the remedy available is to
+install the driver.** Why it refuses is, at the time of writing, **unproven** — and a stated
+mechanism that has already been wrong twice is worth less than the observation.
 
 **Consequences for anyone planning this work:**
 
