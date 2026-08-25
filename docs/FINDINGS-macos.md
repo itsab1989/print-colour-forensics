@@ -765,7 +765,7 @@ controls contradicted. **State the quantity and the masking, per vendor, beside 
 vendor   per-job nonce in the raw stream                what the verdict compared
   A      YES - job GUID + a datetime field, 32 bytes    the normalised stream
   B      YES - a clock field and a job id, header only  the parsed payload block
-  C      NO  - none, in 81 captures over four batches   the whole file (stricter, and valid)
+  C      NO  - none in 81 captures, 8 runs, 2 sessions   the whole file (stricter, and valid)
   D      two models NO; the third YES, 176 bytes        parsed command fields; the third
                                                         model was refused as undecodable
 ```
