@@ -805,3 +805,124 @@ failure of the instrument rather than of the label.
 5. **Nonce status is a property of the stream and belongs beside the verdict**, per vendor, as
    a row: *does this stream carry a per-job nonce, where, and what was masked?* It was known for
    three vendors out of four and written down for none of them.
+
+---
+
+## T21. The hash of nothing — a guard for the instance is not a guard for the class
+
+**Symptom.** A retention artefact, written specifically so that published claims could be
+audited after the raw captures were gone, reported a group of **14 captures with identical
+payloads**. They were not identical. They were fourteen *empty* payloads compared with each
+other, and their shared fingerprint was
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` — **the sha256 of the empty
+string**.
+
+**Cause.** The artefact selected its inputs on one weak signal (a byte sequence that another
+vendor's streams happen to contain), swallowed 14 captures from a different vendor, and its
+parser returned an empty payload for each. Nothing was empty *on disk*; the emptiness was
+created by a parser running on input it could not decode. `[] == []` is True, so they grouped.
+
+**Why it deserves its own entry.** This happened **inside the artefact written to prevent
+T19**, by the same author, **one commit after writing the zero-length guard.** The guard was
+real and correct — it checked that no *file* was zero bytes. The bug was a zero-length
+*payload* from a non-zero file. **A guard aimed at one instance of a class does not immunise
+against the class**, and the author who has just written the guard is the least likely person
+to notice the next instance, because they believe the area is covered.
+
+**How it was caught.** Not by review. By a cheap check written for a different reason — "no
+recorded cell may state a size of 0" — which fired on the artefact the moment it was added.
+
+**Guards.**
+
+1. **Make the tripwire definitional and universal, not per-parser.** The digest of the empty
+   input is never a datum, for any vendor, in any artefact, forever. Assert it over *every*
+   hash-shaped field at any depth, in the shared gate — not in each parser, where it must be
+   remembered.
+2. **Distinguish "empty on disk" from "empty after parsing".** They are different failures with
+   the same smell, and a guard against one reads as covering both.
+3. **Select inputs on a positive identifier, not on the absence of an error.** "Contains this
+   byte sequence" is not "is this vendor's stream". Identify positively, then require that the
+   parser actually decoded something.
+4. **When you write a guard, ask what else is in its class, and put the check where it cannot
+   be forgotten.** The gate, not the script.
+
+
+---
+
+## T22. "The grouping was mine" — a recomputation that nearly retracted a correct claim
+
+**Symptom.** A published table said a driver's raster payload is byte-identical across *"four
+papers of one family"*. Recomputing it from scratch — with a new, correct guard excluding
+failed captures — produced **a difference**, on one paper. The recomputation was clean, the
+guard was right, the control fired. It looked like a retraction.
+
+**Cause.** The recomputation put **five** papers in the row. The fifth, "Baryta Photo Paper",
+is a *different* paper family and it **doubles the plane count** — a resolution change, not a
+colour transform. The publication had said "four papers of one family" and meant exactly that.
+**The claim was right; the grouping was the new code's.**
+
+**What makes it worth recording separately from T18.** T18 is *"a number that contradicts a
+standing claim is a reason to check both"*. This is the sharper case: the new number was
+computed **correctly**, by a **better-guarded** instrument, and was still wrong — because the
+error was not in the arithmetic but in **which rows were put in the bucket**. Re-deriving the
+number more carefully would not have caught it. Only reading what the claim actually *said* —
+"of one family" — and checking what the fifth row *was* did.
+
+**And the difference was real and useful.** Once removed from the row it did not belong in, the
+fifth paper became its own observation, and the colour lever was inert there too — which
+**strengthened** the headline it had appeared to refute.
+
+**Guards.**
+
+1. **Read the scope words in the claim before choosing operands.** "Four papers of one family",
+   "three models of one package", "on plain paper" are part of the claim, not decoration.
+2. **When a recomputation disagrees, suspect the new grouping before the old number.** The
+   grouping is the least-reviewed thing in the comparison — it was invented minutes ago.
+3. **An outlier is a question, not a verdict.** Ask what the outlier *is* before deciding what
+   it *means*. Here one lookup — the paper's own name — settled it.
+
+
+---
+
+## T23. A description-file keyword holding a path is not evidence the filter will follow it
+
+**Symptom.** Two vendors, the same blocker: a print filter that resolves things by absolute
+path under the system's driver directory, which an unprivileged investigator cannot create. On
+vendor A this cost **five installed packages**. On vendor B it cost nothing — its filter reads
+the driver root from a **keyword in the description file**, so one edited line redirected the
+whole tree, no install and no interposition.
+
+The obvious inference — *"vendor A's description files also carry path keywords; the install was
+avoidable"* — is wrong, and it looked strong: vendor A's files carry **ten** absolute-path
+keywords, one of them literally the driver root, **and** a trace had shown the filter looking
+for exactly that path.
+
+**Cause.** Those ten keywords are consumed by the **print system and the print-dialog plug-in**
+— setup tools, icons, localisation bundles — not by the filter. Scanning the filter binaries
+settles it in one command each:
+
+```
+vendor A filter    description-file keywords named: 0 of 10    absolute path literals: 4
+                   (including its own framework directory -- which is why four
+                    framework packages were needed, not just the driver)
+vendor B filter    driver-root keyword named: 1                absolute path literals: 0
+```
+
+**The generalisable form:** *a keyword holding a path proves the **print system** can be told
+where something is. Only the binary can say whether the **filter** asks.*
+
+**And the escape is vendor-specific.** On the two vendors where this has been checked it is
+**data on one and code on the other**. "Blockers of this shape are usually redirectable" is not
+supported and should not spread — the useful habit is the cheap check, not the expectation.
+
+**Guards.**
+
+1. **Read the strings before reaching for `DYLD_INSERT_LIBRARIES`.** Vendor B's filter is 8 KB
+   and its entire search behaviour is four string literals. Interposition is the expensive
+   answer to a question a one-line scan may settle.
+2. **Check the consumer, not the declaration.** Grep the binary for the keyword name. Present
+   means data; absent means code, whatever the description file contains.
+3. **Ask the avoidability question anyway, and in public.** Here the answer was "no, the install
+   was necessary" — but it was worth asking, and an approver who asks whether they approved
+   something avoidable is doing the job. A "no" that has been checked is worth more than a "no"
+   that was assumed.
