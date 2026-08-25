@@ -849,6 +849,35 @@ render the same input through each model's description file
 Used as a disqualifier it deflates a claim after the work. Used as a coverage test it decides
 how much work there is. **Same comparison, run before the round instead of after it.**
 
+### What driver was measured, and how old it was — a scope statement, not a footnote
+
+A verdict is about a **driver build**. Two of the four vendors here were measured on the driver
+**installed on the machine** — the one its owner actually prints with. The other two were
+measured on the platform vendor's **software-update catalog**, which is an archive:
+
+```
+vendor   source                       filter build              verdict describes
+  A      installed on the machine     2024, universal binary    the CURRENT driver
+  B      installed on the machine     2024, universal binary    the CURRENT driver
+  C      platform catalog             2016, x86_64 only         an ARCHIVED driver
+  D      platform catalog             2017, x86_64 only         an ARCHIVED driver
+```
+
+That is an eight-to-ten year gap and a whole processor era. It is not pedantry: on this
+platform the catalog's copy of one vendor's description files is **an older product generation
+that does not contain the colour value this entire investigation turns on**. Finding that value
+required going to the vendor's own download service.
+
+**So a catalog-sourced verdict may not describe what a user downloads today**, and vendors C and
+D are each *two* rows — one measured and archived, one current and **unmeasured**. Neither is
+"done". Where a vendor was measured on the installed driver, say so: it is the strongest form
+of the claim available, and it should not be left implicit alongside the weaker ones.
+
+**And record where every artefact came from.** Source URL, retrieval date, package hash and
+signature belong in the provenance record beside the build identity. On this project they were
+recorded nowhere for a whole session — the work was sound, the trail was not kept, and a later
+auditor could not have reconstructed it. Same failure mode as deleting the captures.
+
 ### Guards for anyone doing this work
 
 1. **Publish the difference criterion before selecting the models**, not after seeing the
