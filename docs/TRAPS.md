@@ -926,3 +926,46 @@ supported and should not spread — the useful habit is the cheap check, not the
    was necessary" — but it was worth asking, and an approver who asks whether they approved
    something avoidable is doing the job. A "no" that has been checked is worth more than a "no"
    that was assumed.
+
+---
+
+## T24. The cheapest source of truth was our own earlier notes, twice
+
+**Symptom.** A driver family was selected, extracted, mirrored (270 files), repointed and run —
+and then found to be unmeasurable, because both of its colour-management options are
+**single-valued**: there is no second value to request, so there is no request whose honouring
+could be measured. The round could not have produced a verdict under any circumstances.
+
+**Cause.** The project's own survey document already said so, in a table, in one line:
+
+> *"<vendor> laser (UFR/PS) | none — matching options are single-value in these PPDs"*
+
+Nobody read it. The selection was made from package names and binary structure — both genuinely
+informative, both about *feasibility* — without checking the one source that spoke to
+*worthwhileness*.
+
+**The second instance, same week, different clothes.** A vendor's driver-download service is
+reached by a per-file id embedded in a URL. Earlier work used it successfully and recorded the
+**URL shape** — and not one id. The service is still live; the route is unusable from our own
+notes, and the ids must be rediscovered from the vendor's per-model pages.
+
+**Why it is worth an entry of its own.** Both failures were in the *opposite* direction from
+the usual one. The usual trap is trusting an old note too much (T18). This is trusting it too
+little — or rather never looking, because prior art feels like *background* while a fresh
+measurement feels like *work*. It is the cheapest evidence in the project and the least read,
+and being the author of the earlier note is no protection: in both cases the same team wrote it.
+
+**Guards.**
+
+1. **Make the sweep a mechanical first step, not a habit.** A script that greps every prior-art
+   source for the vendor/family, and **exits non-zero when it finds nothing** — so "there is no
+   prior art" becomes a visible claim rather than a silent assumption.
+2. **Require the quote, not the intention.** The selection note must contain the lines the sweep
+   returned. "I checked" is unfalsifiable; a quotation is not.
+3. **"Prior work says no lever" changes the round; it does not end it.** Confirm or refute the
+   old claim cheaply — re-read the current option values and say whether it still holds. A
+   five-minute confirmation is a result. Rebuilding a measurement of something with nothing to
+   vary is not.
+4. **Record what you fetch, at the moment you fetch it.** URLs, file ids, package filenames —
+   into the provenance record as they are used, never at write-up time. A route that worked once
+   and was not written down is a route you do not have.
