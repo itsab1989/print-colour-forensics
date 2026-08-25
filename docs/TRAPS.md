@@ -746,3 +746,62 @@ non-empty result:
 This is the same lesson as the completeness control — *an absence proves nothing until the
 instrument is shown able to detect a presence* — arriving from the other side: **an emptiness
 proves nothing until the instrument is shown able to find something.**
+
+---
+
+## T20. Two controls contradicted each other — because "the hash" was two different hashes
+
+**Symptom.** A determinism control had passed twice, on two vendors, in the strongest possible
+form: *"same configuration, every repeat byte-identical, no clock and no job nonce at all."* On
+the strength of it, a **byte-identity disqualifier** — *two models that emit identical output
+are one device measured twice* — was used to retract two published headlines. Then an agent ran
+the same configuration again in a later batch and got a **different hash**, and stopped: if the
+capture is not deterministic, the disqualifier is worthless and so are both retractions.
+
+**Cause.** Both observations were right. They were **not measurements of the same thing**. The
+determinism control and the disqualifier hashed the **masked payload block** — the driver's
+image data, located by parsing the container. The "different hash" hashed the **whole file**,
+which on that vendor begins with a 248-byte header carrying a wall-clock field and a per-job
+id. Two quantities, one word: *"the hash"*.
+
+**How it was killed.** By the repeats *inside a single batch*, which the three candidate
+explanations disagree about:
+
+```
+per-job nonce           -> the hash differs on EVERY job, same batch included
+batch position / state  -> the hash is constant within a batch, differs between batches
+capture read mid-write  -> the size at first sight differs from the size after settling
+
+measured: 6 identical jobs, one batch, consecutive -> 6 distinct whole-file hashes
+          the same 6, and 6 more from a later batch -> ONE payload hash
+          every byte that varied lay at offset 54-55 and 96-99; the payload spans 248..75613
+```
+
+The nondeterminism was **per job**, so "which batch" never entered into it. Nothing about the
+render moved: every capture was the same length, and the varying bytes were a fixed-length
+field written in place.
+
+**Why it hid.** The vendor whose stream has **no** nonce was the one whose evidence was
+recorded as a whole-file hash — correct there, and stricter than a payload hash. The vendor
+whose stream **does** carry a nonce was the one whose evidence was recorded as a payload hash —
+also correct. Each artefact was right; nothing recorded *which quantity it was*, so the moment
+one was compared against the other they contradicted, and the contradiction looked like a
+failure of the instrument rather than of the label.
+
+**Guards.**
+
+1. **Name the quantity in the artefact, not in the prose around it.** `sha256` is not a field
+   name. `payload_sha256` and `whole_file_sha256` are, and an artefact that carries both can
+   never be read as the other one.
+2. **A byte-identity claim must state the masking it rests on** — and the disqualifier above is
+   now written as *"identical **after the stream's known nonces are masked**"*. Without that
+   clause it is not a test, because on a nonce-bearing stream nothing is ever identical and on a
+   nonce-free stream the clause costs nothing.
+3. **When two controls contradict, the first question is whether they measured the same
+   quantity** — not which one is broken. Both may be sound, as here.
+4. **Separate a per-item effect from a position effect with repeats inside one batch.** They
+   make opposite predictions there, and it is the cheapest measurement in the set. The batch-to-
+   batch comparison — the one that raised the alarm — cannot tell them apart at all.
+5. **Nonce status is a property of the stream and belongs beside the verdict**, per vendor, as
+   a row: *does this stream carry a per-job nonce, where, and what was masked?* It was known for
+   three vendors out of four and written down for none of them.
