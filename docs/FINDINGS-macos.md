@@ -749,9 +749,34 @@ finished? It is not, and the reason is a selection error worth publishing on its
 
 ### The disqualifier that settles it
 
-Two models are **one device measured twice** — whatever their names, and whatever their
-description files say — if they emit **byte-identical output**, or output differing only by a
-model identifier. That test is cheap and it is the last word. It was not being run.
+Two models are **one measurement repeated** — whatever their names, and whatever their
+description files say — if they emit **byte-identical output once the stream's known per-job
+nonces are masked**, or output differing only by a model identifier. That test is cheap and it
+is the last word. It was not being run.
+
+**The masking clause is load-bearing and was added on 2026-08-25, after it caused a false
+alarm** (TRAPS T20). Three of the four vendors here emit a clock, a job id or both; on such a
+stream nothing is ever byte-identical and the raw test always says "different". Two of the four
+rounds compared a **masked payload**, two compared a **whole file**, and both were right for
+their vendor — but nothing recorded which, so the moment one was read as the other the two
+controls contradicted. **State the quantity and the masking, per vendor, beside the verdict:**
+
+```
+vendor   per-job nonce in the raw stream                what the verdict compared
+  A      YES - job GUID + a datetime field, 32 bytes    the normalised stream
+  B      YES - a clock field and a job id, header only  the parsed payload block
+  C      NO  - none, in 81 captures over four batches   the whole file (stricter, and valid)
+  D      two models NO; the third YES, 176 bytes        parsed command fields; the third
+                                                        model was refused as undecodable
+```
+
+**And the conclusion the test licenses is narrower than "one device."** It says the *host-side
+rendering* is one and the same. Whether the products are one device depends on whether the
+stream carries anything that could distinguish them — vendor B's does (a per-model constant
+byte), **vendor C's does not**: its streams contain no model string of any kind, and its three
+description files declare the same filter, the same imageable area and the same option counts.
+For the purpose of counting *measurements* the distinction does not matter — identical bytes
+are one datum however they arose. For the purpose of counting *devices* it decides the claim.
 
 ### What it showed, applied to every round
 
@@ -766,7 +791,9 @@ vendor    models named   genuinely distinct   verdicts found
 * **Vendor B's four** — two of them regional badges of the other two — differ by a single byte
   at a single offset. One device, four names.
 * **Vendor C's three** — same driver family, same generation, same product line — are
-  **byte-identical**. One device, three names.
+  **byte-identical**, and that stream carries no nonce, so the raw comparison is the right one
+  here. Three names, **one rendering**; and because the stream carries no model identifier at
+  all, that is as far as the evidence reaches — it does not establish one *chassis*.
 * **Vendor D's three** — different renderer families in the vendor's own data, different output
   languages, different generations — are genuinely three devices.
 
