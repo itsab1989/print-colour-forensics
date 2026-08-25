@@ -808,6 +808,47 @@ all**: every apparent instance of it was one device measured repeatedly, and the
 test of it failed. **Six genuinely distinct devices** have been measured across four vendors —
 1, 1, 1 and 3.
 
+### The result this produced, stated positively — two architectures, and we can now tell which is which
+
+The corrected reading is not only a retraction. Applied forwards it answers a question the
+investigation had been *assuming* an answer to: **does a verdict measured on one model transfer
+to the other models the same driver serves?**
+
+| | vendor C | vendor D |
+|---|---|---|
+| models opened | 3 | 3 |
+| identical input → host output | **byte-identical on all three** | three different streams |
+| verdict | **one verdict covers all three** | **three different verdicts**: carried / silently discarded / undecodable |
+| what that means | the host layer is **model-independent** here | the host layer is **model-specific** here |
+
+**On vendor C, one host-layer measurement provably covers all three models.** Identical input
+yields byte-identical host output across three separate description files, so whatever that
+driver does to colour, it does the same for all of them — there is nothing left for a second
+measurement to find. **On vendor D it demonstrably does not transfer**, and a verdict read
+across from one model to another would have been wrong two times in three.
+
+**The limit, in the same breath: this is host-layer transfer only.** What the *firmware* does
+with the bytes is per-model, unobservable from the computer, and untouched by any of this. Two
+printers that receive identical bytes may still print differently, and only a printed, measured
+sheet can say. The claim is precisely: *the computer treats these three models identically* —
+not *these three printers behave identically*.
+
+### The economics: byte-identity is a cheap COVERAGE test, not only a disqualifier
+
+Run first, it costs one comparison and it answers *"how many measurements does this set
+actually need?"* before any of them is made:
+
+```
+render the same input through each model's description file
+  -> byte-identical  : ONE measurement covers the set. The round is finished sooner,
+                       and the coverage claim is stronger than a sampled one.
+  -> differs         : each model needs its own verdict. Sample accordingly -- and expect
+                       them to disagree, because on the only set measured this way, they did.
+```
+
+Used as a disqualifier it deflates a claim after the work. Used as a coverage test it decides
+how much work there is. **Same comparison, run before the round instead of after it.**
+
 ### Guards for anyone doing this work
 
 1. **Publish the difference criterion before selecting the models**, not after seeing the
