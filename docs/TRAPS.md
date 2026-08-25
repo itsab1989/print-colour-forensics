@@ -969,3 +969,52 @@ and being the author of the earlier note is no protection: in both cases the sam
 4. **Record what you fetch, at the moment you fetch it.** URLs, file ids, package filenames —
    into the provenance record as they are used, never at write-up time. A route that worked once
    and was not written down is a route you do not have.
+
+---
+
+## T25. `otool -L` answers "what does this link?", not "what will this open?"
+
+**Symptom.** A vendor print filter was checked for redistributable independence the standard
+way — `otool -L` showed **system libraries only, no vendor frameworks** — and was declared
+*self-contained*, therefore measurable from a scratch directory with **no install**. That test
+had been correct on an earlier vendor, where a filter with the same profile really did run
+unmodified out of an extracted package.
+
+Here it ran and died immediately with an unhelpful status, and the *first* diagnosis blamed the
+wrong process (see below).
+
+**Cause.** The filter loads its **colour-conversion framework at runtime, by absolute path**:
+
+```
+strings:   /Library/Printers/<vendor>/<tree>/Libraries/EPConvertManager.framework
+otool -L:  EPConvertManager appears 0 times      <- not linked, so linkage analysis is blind
+```
+
+Because it is opened rather than linked, `otool -L`, `nm -u` and the whole static-dependency
+toolchain cannot see it, and **`DYLD_LIBRARY_PATH`/`DYLD_FRAMEWORK_PATH` do not redirect it** —
+those act on install names, not on a runtime open of a literal path.
+
+**Why it mattered rather than merely failing.** A *newer* build of the filter was being run from
+a scratch copy while an *older* build of the vendor's driver was installed at the real path. So
+the process was new code driving **the old colour framework** — the two differed by 592 bytes
+and a different hash, and 793 files differed across the trees. Had it produced output, it would
+have been a measurement of a combination that exists nowhere.
+
+**The second error, recorded because it is the more embarrassing one.** The first reading of the
+job log said the *upstream* rasteriser had failed and the vendor filter never ran — and
+concluded, correctly by that reading, "not evidence about the vendor's filter". The log said the
+opposite; the two exit lines were read in the wrong causal order. Running the upstream stage
+**alone** settled it in one command: it returned rc=0 and a full-size raster.
+
+**Guards.**
+
+1. **"Self-contained" has two meanings — linkage and resources.** Static analysis proves the
+   first. Only `strings` for absolute paths, plus a filesystem trace, speaks to the second.
+   Say which one you checked.
+2. **Grep the binary for the vendor's own installed tree before claiming zero footprint.** One
+   command, and it is the same habit as T23: read the strings.
+3. **Never mix versions.** Running build *N* of a filter against build *M* of its data is not a
+   measurement of either. If the tree is installed, check that what you are running matches it.
+4. **When two processes in a pipeline both fail, isolate before assigning cause.** Exit lines
+   are not ordered by causality, and the consumer dying makes the producer fail too. Run each
+   stage alone; the one that fails on its own is the one that failed.
